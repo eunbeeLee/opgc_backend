@@ -1,4 +1,11 @@
 django-filter==2.4.0
 djangorestframework==3.12.2
 mysqlclient==2.0.1
+pytest==5.3.5
+pytest-cov==2.8.1
+pytest-django==3.8.0
+pytest-forked==1.0.2
+pytest-mock==1.10.4
+pytest-ordering==0.6
+pytest-xdist==1.29.0
 Django==2.2.17
