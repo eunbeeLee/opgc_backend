@@ -1,1 +1,4 @@
+django-filter==2.4.0
+djangorestframework==3.12.2
+mysqlclient==2.0.1
 Django==2.2.17
