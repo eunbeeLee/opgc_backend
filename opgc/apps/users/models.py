@@ -1,14 +1,8 @@
 from django.db import models
 
-
-class CustomModel(models.Model):
-    created = models.DateTimeField(auto_now_add=True)
-    updated = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        abstract = True
+from apps.helpers.models import CustomBaseModel
 
 
-class User(CustomModel):
+class User(CustomBaseModel):
     username = models.CharField(unique=True, max_length=200, null=False) # Github ID
     profile_image = models.CharField(max_length=500, null=True) # Github Profile Image URL
