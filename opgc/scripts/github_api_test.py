@@ -5,23 +5,35 @@
 import json
 
 import requests
+from furl import furl
 
+from apps.githubs.models import GithubUser
 
 REPO = ''
-USERNAME = ''
-URL = 'https://api.github.com/'
+USERNAME = 'JAY-Chan9yu'
+FURL = furl('https://api.github.com/')
+
+user_api = FURL.set(path=f'/users/{USERNAME}')
 
 
-def get_github_user_information():
-    res = requests.get('')
-    print(res)
+def get_or_create_github_user():
+    res = requests.get(user_api)
 
+    if res.status_code != 200:
+        return False
 
-def get_github_repo_languages():
-    res = requests.get(f'{URL}repos/{USERNAME}/{REPO}/languages')
-    print(json.loads(res.content.decode("UTF-8")))
+    user_information = json.loads(res.content.decode("UTF-8"))
+
+    try:
+        github_user = GithubUser.objects.filter(username=USERNAME).get()
+    except GithubUser.DoesNotExist:
+        github_user = GithubUser.objects.create(
+            username=USERNAME,
+            profile_image=user_information.get('avatar_url')
+        )
+
+    print(github_user)
 
 
 def run():
-    # get_github_repo_languages()
-    get_github_repo_languages()
+    get_or_create_github_user()
