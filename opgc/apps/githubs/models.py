@@ -12,7 +12,7 @@ class GithubUser(CustomBaseModel):
         (UNRANK, 'unrank')
     )
 
-    NONE, COMPLETED, WAITING, UPDATING, FAIL,  = 0, 5, 10, 15, 20
+    NONE, COMPLETED, WAITING, UPDATING, FAIL = 0, 5, 10, 15, 20
     UPDATING_STATUS = (
         (NONE, 'none'),
         (COMPLETED, 'completed'),
@@ -38,6 +38,12 @@ class Language(CustomBaseModel):
     type = models.CharField(verbose_name='language_type', unique=True, max_length=100, blank=False)
 
 
+class GithubLanguage(CustomBaseModel):
+    language = models.ForeignKey(Language, on_delete=models.CASCADE)
+    github_user = models.ForeignKey(GithubUser, on_delete=models.CASCADE)
+    number = models.IntegerField(default=0) # number of bytes of code written in that language.
+
+
 class Organization(CustomBaseModel):
     name = models.CharField(verbose_name='name', unique=True, max_length=100, blank=False)
     description = models.CharField(verbose_name='description', max_length=500, blank=False)
@@ -45,8 +51,8 @@ class Organization(CustomBaseModel):
 
 
 class UserOrganization(CustomBaseModel):
-    github_user = models.ForeignKey(GithubUser, on_delete=models.CASCADE)
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    github_user = models.ForeignKey(GithubUser, on_delete=models.CASCADE, related_name='user_org')
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='org')
 
 
 class Repository(CustomBaseModel):
@@ -62,13 +68,6 @@ class Repository(CustomBaseModel):
                                  null=True,
                                  blank=True,
                                  related_name='language')
-
-
-class GithubLanguage(CustomBaseModel):
-    language = models.ForeignKey(Language, on_delete=models.CASCADE)
-    github_user = models.ForeignKey(GithubUser, on_delete=models.CASCADE)
-    number = models.IntegerField(default=0) # number of bytes of code written in that language.
-
 
 # 달성 목표 (재미를 위한 컨텐츠)
 class Achievements(CustomBaseModel):
