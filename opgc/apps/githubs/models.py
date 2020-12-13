@@ -12,6 +12,15 @@ class GithubUser(CustomBaseModel):
         (UNRANK, 'unrank')
     )
 
+    NONE, COMPLETED, WAITING, UPDATING, FAIL,  = 0, 5, 10, 15, 20
+    UPDATING_STATUS = (
+        (NONE, 'none'),
+        (COMPLETED, 'completed'),
+        (WAITING, 'waiting'),
+        (UPDATING, 'updating'),
+        (FAIL, 'fail')
+    )
+
     username = models.CharField(unique=True, max_length=200, null=False) # Github ID
     profile_image = models.CharField(max_length=500, null=True)  # Github Profile Image URL
     total_contribution = models.IntegerField(verbose_name='contribution', default=0)
@@ -22,6 +31,7 @@ class GithubUser(CustomBaseModel):
     public_repos = models.IntegerField(default=0, blank=True)
     followers = models.IntegerField(default=0, blank=True)
     following = models.IntegerField(default=0, blank=True)
+    status = models.SmallIntegerField(choices=UPDATING_STATUS, default=NONE, blank=False)
 
 
 class Language(CustomBaseModel):
