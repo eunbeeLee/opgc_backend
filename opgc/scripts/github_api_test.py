@@ -10,7 +10,7 @@ import requests
 from furl import furl
 
 from apps.githubs.models import GithubUser, Repository, Language, UserOrganization, Organization, GithubLanguage
-from conf.settings.local import OPGC_TOKEN
+from conf.settings.prod import OPGC_TOKEN
 
 USERNAME = 'JAY-Chan9yu'
 FURL = furl('https://api.github.com/')
