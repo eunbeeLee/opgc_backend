@@ -3,6 +3,7 @@ from rest_framework.response import Response
 
 from api.githubs.serializers import GithubUserSerializer, OrganizationSerializer
 from apps.githubs.models import GithubUser, Organization
+from utils.githubs import UpdateGithubInformation
 
 
 class GithubUserViewSet(viewsets.ViewSet,
@@ -22,12 +23,21 @@ class GithubUserViewSet(viewsets.ViewSet,
         try:
             github_user = GithubUser.objects.filter(username=username).get()
         except GithubUser.DoesNotExist:
+            update_github_information = UpdateGithubInformation(username)
+            exists, user_information = update_github_information.check_github_user()
+
+            if not exists:
+                raise exceptions.NotFound
+
+            # todo: GithubUser 정보만 업데이트하고 나머지 따로 처리할건지 생각해야함 (오래걸림 작업이)
+            github_user = update_github_information.update(user_information=user_information)
+
+        if not isinstance(github_user, GithubUser):
             raise exceptions.NotFound
 
         return github_user
 
     def list(self, request, *args, **kwargs):
-        # todo: user가 없는 경우 생성하도록 처리하고 client에는 잠시기다리라는 안내?하기
         queryset = self.get_queryset()
         serializer = self.serializer_class(queryset)
 
