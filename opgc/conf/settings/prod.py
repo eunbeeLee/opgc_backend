@@ -8,12 +8,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/3.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = ''
+SECRET_KEY = 'OPGC_SECRET_KEY'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['OPGC_ALLOWED_HOSTS']
 
 # Application definition
 INSTALLED_APPS = [
@@ -62,14 +62,11 @@ WSGI_APPLICATION = 'opgc.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'opgcdb',
-        'USER': '',
-        'HOST': '',
-        'PASSWORD': '',
         'OPTIONS': {
+            'read_default_file': 'OPGC_DB_CONF',
             'charset': 'utf8mb4',
+            'init_command': 'set collation_connection=utf8mb4_unicode_ci; SET default_storage_engine=INNODB; SET SQL_MODE=STRICT_TRANS_TABLES;',
         },
-        'CONN_MAX_AGE': 600,
     }
 }
 
