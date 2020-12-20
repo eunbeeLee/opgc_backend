@@ -55,7 +55,7 @@ class UpdateGithubInformation(object):
             github_user = GithubUser.objects.create(
                 username=self.username,
                 profile_image=user_information.get('avatar_url'),
-                company=user_information.get('company'),
+                company=user_information.get('company') if user_information.get('company') else '',
                 bio=user_information.get('bio'),
                 blog=user_information.get('blog'),
                 public_repos=user_information.get('public_repos'),
@@ -234,7 +234,7 @@ class UpdateGithubInformation(object):
                 github_user.status = GithubUser.FAIL
                 github_user.save(update_fields=['status'])
                 return False
-
+            
             # 3. Organization 정보와 연관된 repository 업데이트
             is_update_org = self.update_organization(github_user, user_information.get('organizations_url'))
             if not is_update_org:
