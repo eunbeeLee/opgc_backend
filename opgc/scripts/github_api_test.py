@@ -7,10 +7,10 @@
 import json
 
 import requests
+from django.conf import settings
 from furl import furl
 
 from apps.githubs.models import GithubUser, Repository, Language, UserOrganization, Organization, GithubLanguage
-from conf.settings.prod import OPGC_TOKEN
 
 USERNAME = 'JAY-Chan9yu'
 FURL = furl('https://api.github.com/')
@@ -18,7 +18,7 @@ FURL = furl('https://api.github.com/')
 """
     * Authorization - access token 이 있는경우 1시간에 5000번 api 호출 가능 없으면 60번
 """
-headers = {'Authorization': f'token {OPGC_TOKEN}'}
+headers = {'Authorization': f'token {settings.OPGC_TOKEN}'}
 user_api = FURL.set(path=f'/users/{USERNAME}')
 
 
