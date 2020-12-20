@@ -73,6 +73,7 @@ DATABASES = {
             'charset': 'utf8mb4',
             'init_command': 'set collation_connection=utf8mb4_unicode_ci; SET default_storage_engine=INNODB; SET SQL_MODE=STRICT_TRANS_TABLES;',
         },
+        'CONN_MAX_AGE': 600,
     }
 }
 
