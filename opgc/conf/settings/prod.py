@@ -1,29 +1,13 @@
 import os
 from pathlib import Path
-
+from conf.settings.base import *
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/3.1/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = ''
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
-
-# Application definition
-INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-]
+ALLOWED_HOSTS = ['OPGC_ALLOWED_HOSTS']
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -63,11 +47,10 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'opgcdb',
-        'USER': '',
-        'HOST': '',
-        'PASSWORD': '',
         'OPTIONS': {
+            'read_default_file': 'OPGC_DB_CONF',
             'charset': 'utf8mb4',
+            'init_command': 'set collation_connection=utf8mb4_unicode_ci; SET default_storage_engine=INNODB; SET SQL_MODE=STRICT_TRANS_TABLES;',
         },
         'CONN_MAX_AGE': 600,
     }
@@ -95,7 +78,18 @@ AUTH_PASSWORD_VALIDATORS = [
 #########################################
 #           센트리 리포팅
 #########################################
-# sentry_sdk.init()
+import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
+
+sentry_sdk.init(
+    dsn="OPGC_SENTRY_REPORTING",
+    integrations=[DjangoIntegration()],
+    traces_sample_rate=1.0,
+
+    # If you wish to associate users to errors (assuming you are using
+    # django.contrib.auth) you may enable sending PII data.
+    send_default_pii=True
+)
 
 #########################################
 #           슬랙 채널
