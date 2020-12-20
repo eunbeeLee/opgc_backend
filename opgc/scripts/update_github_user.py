@@ -92,12 +92,12 @@ def update_repo(user: GithubUser, repository: dict):
         res = requests.get(repository.get('contributors_url'), headers=headers)
 
         if res.status_code != 200:
-            return False
+            # todo: log 남기기
+            return 0
 
         for contributor in json.loads(res.content.decode("UTF-8")):
             # User 타입이고 contributor 가 본인인 경우
-            if contributor.get('type') == 'User' and \
-                    contributor.get('login') == user.username:
+            if contributor.get('type') == 'User' and contributor.get('login') == user.username:
                 _contribution += contributor.get('contributions')
 
                 try:
@@ -138,8 +138,10 @@ def get_language(language: str) -> Language:
 
 
 def update_language(user: GithubUser, languages_url: str):
+    """
+        repository 에서 사용중인 언어를 찾아서 User 의 사용언엉로 추가
+    """
     res = requests.get(languages_url, headers=headers)
-
     if res.status_code != 200:
         return False
 
@@ -168,7 +170,6 @@ def update_organization(user: GithubUser, organization_url: str):
     """
 
     res = requests.get(organization_url, headers=headers)
-
     if res.status_code != 200:
         return False
 
@@ -189,13 +190,15 @@ def update_organization(user: GithubUser, organization_url: str):
                 logo=organization_data.get('avatar_url'),
             )
 
-        if not UserOrganization.objects.filter(
-                github_user=user, organization=organization.id).exists():
+        if not UserOrganization.objects.filter(github_user=user, organization=organization.id).exists():
             UserOrganization.objects.create(
                 github_user=user,
                 organization=organization
             )
 
+        ################################################################################
+        #    organization 에 있는 repository 중 User 가 Contributor 인 repository 를 등록한다.
+        ################################################################################
         res = requests.get(organization_data.get('repos_url'), headers=headers)
         if res.status_code != 200:
             return False
@@ -206,17 +209,13 @@ def update_organization(user: GithubUser, organization_url: str):
             if res.status_code != 200:
                 return False
 
-            is_contributor = False
             for contributor in json.loads(res.content.decode("UTF-8")):
                 if user.username == contributor.get('login'):
-                    is_contributor = True
+                    contribution = update_repo(user, repository)
+                    user.total_contribution += contribution
+                    user.save(update_fields=['total_contribution'])
+                    update_language(user, repository.get('languages_url'))
                     break
-
-            if is_contributor:
-                contribution = update_repo(user, repository)
-                user.total_contribution += contribution
-                user.save(update_fields=['total_contribution'])
-                update_language(user, repository.get('languages_url'))
 
 
 def run():
