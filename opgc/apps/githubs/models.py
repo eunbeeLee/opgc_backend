@@ -69,6 +69,6 @@ class Repository(CustomBaseModel):
                                  blank=True,
                                  related_name='language')
 
-# 달성 목표 (재미를 위한 컨텐츠)
-class Achievements(CustomBaseModel):
+
+class Achievements(CustomBaseModel): # 달성 목표 (재미를 위한 컨텐츠)
     summary = models.CharField(verbose_name='summary', max_length=200, blank=False)

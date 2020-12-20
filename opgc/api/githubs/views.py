@@ -1,9 +1,8 @@
 from rest_framework import viewsets, mixins, exceptions
-from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from api.githubs.serializers import GithubUserSerializer, OrganizationSerializer
-from apps.githubs.models import GithubUser, Organization, UserOrganization
+from apps.githubs.models import GithubUser, Organization
 
 
 class GithubUserViewSet(viewsets.ViewSet,
