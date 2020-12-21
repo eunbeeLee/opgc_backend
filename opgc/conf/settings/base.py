@@ -10,7 +10,8 @@ INSTALLED_APPS = [
     'django_extensions',
 
     'apps.users',
-    'apps.githubs'
+    'apps.githubs',
+    'apps.reservations'
 ]
 
 # SECURITY WARNING: keep the secret key used in production secret!
