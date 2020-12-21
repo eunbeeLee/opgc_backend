@@ -1,8 +1,8 @@
 from rest_framework import viewsets, mixins, exceptions
 from rest_framework.response import Response
 
-from api.githubs.serializers import GithubUserSerializer, OrganizationSerializer
-from apps.githubs.models import GithubUser, Organization
+from api.githubs.serializers import GithubUserSerializer, OrganizationSerializer, RepositorySerializer
+from apps.githubs.models import GithubUser, Organization, Repository
 from utils.githubs import UpdateGithubInformation
 
 
@@ -56,7 +56,7 @@ class OrganizationViewSet(viewsets.ViewSet,
     lookup_url_kwarg = 'user_pk'
 
     def get_queryset(self):
-        user_pk = int(self.kwargs.get(self.lookup_url_kwarg))
+        user_pk = self.kwargs.get(self.lookup_url_kwarg)
         organizations = Organization.objects.filter(org__github_user_id=user_pk)
 
         return organizations
@@ -64,5 +64,28 @@ class OrganizationViewSet(viewsets.ViewSet,
     def list(self, request, *args, **kwargs):
         organizations = self.get_queryset()
         serializer = OrganizationSerializer(organizations, many=True)
+
+        return Response(serializer.data)
+
+
+class RepositoryViewSet(viewsets.ViewSet,
+                        mixins.ListModelMixin):
+    """
+        endpoint : githubs/:user_pk/repositories/
+    """
+
+    queryset = Repository.objects.all()
+    serializer_class = GithubUserSerializer
+    lookup_url_kwarg = 'user_pk'
+
+    def get_queryset(self):
+        user_pk = self.kwargs.get(self.lookup_url_kwarg)
+        repositories = Repository.objects.filter(github_user_id=user_pk)
+
+        return repositories
+
+    def list(self, request, *args, **kwargs):
+        organizations = self.get_queryset()
+        serializer = RepositorySerializer(organizations, many=True)
 
         return Response(serializer.data)

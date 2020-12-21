@@ -114,11 +114,13 @@ class UpdateGithubInformation(object):
                             name=repository.get('name'),
                             full_name=repository.get('full_name'),
                             owner=repository.get('owner')['login'],
-                            contribution=repository.get('contribution', 0)
+                            contribution=repository.get('contribution', 0),
+                            language=repository.get('language') if repository.get('language') else ''
                         )
 
                     repo.contribution = _contribution
                     repo.save(update_fields=['contribution'])
+                    break
 
             self.update_language(user, repository.get('languages_url'))
 
@@ -138,7 +140,7 @@ class UpdateGithubInformation(object):
 
     def update_language(self, user: GithubUser, languages_url: str):
         """
-            repository 에서 사용중인 언어를 찾아서 User 의 사용언엉로 추가
+            repository 에서 사용중인 언어를 찾아서 User 의 사용언어로 추가
         """
         res = requests.get(languages_url, headers=self.headers)
         if res.status_code != 200:
