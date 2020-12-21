@@ -41,9 +41,9 @@ class UpdateGithubInformation(object):
         try:
             github_user = GithubUser.objects.filter(username=self.username).get()
             github_user.status = GithubUser.UPDATING
-            github_user.company = user_information.get('company') if user_information.get('company') else '',
-            github_user.bio = user_information.get('bio')
-            github_user.blog = user_information.get('blog')
+            github_user.company = user_information.get('company') or ''
+            github_user.bio = user_information.get('bio') or ''
+            github_user.blog = user_information.get('blog') or ''
             github_user.public_repos = user_information.get('public_repos')
             github_user.followers = user_information.get('followers')
             github_user.following = user_information.get('following')
@@ -56,9 +56,9 @@ class UpdateGithubInformation(object):
             github_user = GithubUser.objects.create(
                 username=self.username,
                 profile_image=user_information.get('avatar_url'),
-                company=user_information.get('company') if user_information.get('company') else '',
-                bio=user_information.get('bio'),
-                blog=user_information.get('blog'),
+                company=user_information.get('company') or '',
+                bio=user_information.get('bio') or '',
+                blog=user_information.get('blog') or '',
                 public_repos=user_information.get('public_repos'),
                 followers=user_information.get('followers'),
                 following=user_information.get('following')
@@ -122,7 +122,7 @@ class UpdateGithubInformation(object):
                                 full_name=repository.get('full_name'),
                                 owner=repository.get('owner')['login'],
                                 contribution=repository.get('contribution', 0),
-                                language=repository.get('language') if repository.get('language') else ''
+                                language=repository.get('language') or ''
                             )
                         )
                     break
@@ -193,6 +193,7 @@ class UpdateGithubInformation(object):
             return False
 
         update_user_organization_list = []
+        new_organization_list = []
         for organization_data in json.loads(res.content.decode("UTF-8")):
             try:
                 organization = Organization.objects.filter(
@@ -206,10 +207,10 @@ class UpdateGithubInformation(object):
                 update_user_organization_list.append(organization.id)
 
             except Organization.DoesNotExist:
-                self.new_organization_list.append(
-                    Organization(
+                new_organization_list.append(
+                    Organization.objects.create(
                         name=organization_data.get('login'),
-                        description=organization_data.get('description'),
+                        description=organization_data.get('description') if organization_data.get('description') else '',
                         logo=organization_data.get('avatar_url'),
                     )
                 )
@@ -235,11 +236,9 @@ class UpdateGithubInformation(object):
                         break
 
         # organization 이 새로 생기는 경우
-        if self.new_organization_list:
-            organizations = Organization.objects.bulk_create(self.new_organization_list)
+        if new_organization_list:
             new_user_organization_list = []
-
-            for organization in organizations:
+            for organization in new_organization_list:
                 if not UserOrganization.objects.filter(
                         github_user_id=user.id, organization_id=organization.id).exists():
                     new_user_organization_list.append(
@@ -249,9 +248,9 @@ class UpdateGithubInformation(object):
                         )
                     )
 
-                UserOrganization.objects.bulk_create(
-                    new_user_organization_list
-                )
+            UserOrganization.objects.bulk_create(
+                new_user_organization_list
+            )
 
         # organization 은 있고 UserOrganization 만 새로 생기는 경우
         new_user_organization_list = []
