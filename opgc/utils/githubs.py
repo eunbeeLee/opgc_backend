@@ -15,12 +15,13 @@ FURL = furl('https://api.github.com/')
 
 
 class UpdateGithubInformation(object):
-    total_contribution = None
 
     def __init__(self, username):
         self.headers = {'Authorization': f'token {settings.OPGC_TOKEN}'}
         self.total_contribution = 0
         self.username = username
+        self.new_repository_list = []
+        self.new_organization_list = []
 
     def check_github_user(self):
         """
@@ -40,7 +41,7 @@ class UpdateGithubInformation(object):
         try:
             github_user = GithubUser.objects.filter(username=self.username).get()
             github_user.status = GithubUser.UPDATING
-            github_user.company = user_information.get('company')
+            github_user.company = user_information.get('company') if user_information.get('company') else '',
             github_user.bio = user_information.get('bio')
             github_user.blog = user_information.get('blog')
             github_user.public_repos = user_information.get('public_repos')
@@ -83,6 +84,8 @@ class UpdateGithubInformation(object):
             _contribution = self.update_repo(user, repository)
             total_contribution += _contribution
 
+        if self.new_repository_list:
+            Repository.objects.bulk_create(self.new_repository_list)
         self.total_contribution += total_contribution
 
         return True
@@ -108,18 +111,20 @@ class UpdateGithubInformation(object):
                             full_name=repository.get('full_name'),
                             owner=repository.get('owner')['login'],
                         ).get()
-                    except Repository.DoesNotExist:
-                        repo = Repository.objects.create(
-                            github_user=user,
-                            name=repository.get('name'),
-                            full_name=repository.get('full_name'),
-                            owner=repository.get('owner')['login'],
-                            contribution=repository.get('contribution', 0),
-                            language=repository.get('language') if repository.get('language') else ''
-                        )
 
-                    repo.contribution = _contribution
-                    repo.save(update_fields=['contribution'])
+                        repo.contribution = _contribution
+                        repo.save(update_fields=['contribution'])
+                    except Repository.DoesNotExist:
+                        self.new_repository_list.append(
+                            Repository(
+                                github_user=user,
+                                name=repository.get('name'),
+                                full_name=repository.get('full_name'),
+                                owner=repository.get('owner')['login'],
+                                contribution=repository.get('contribution', 0),
+                                language=repository.get('language') if repository.get('language') else ''
+                            )
+                        )
                     break
 
             self.update_language(user, repository.get('languages_url'))
@@ -146,23 +151,35 @@ class UpdateGithubInformation(object):
         if res.status_code != 200:
             return False
 
+        update_language_dic = {}
         languages_data = json.loads(res.content.decode("UTF-8"))
         for language_data in languages_data.items():
             language = self.get_language(language_data[0])
 
+            if not update_language_dic.get(language.id):
+                update_language_dic[language.id] = language_data[1]
+            else:
+                update_language_dic[language.id] += language_data[1]
+
+        github_language_bulk_list = []
+        for language_id, number in update_language_dic.items():
             try:
-                github_language = GithubLanguage.objects.filter(
-                    language=language,
-                    github_user=user
-                ).get()
+                GithubLanguage.objects.filter(
+                    language_id=language_id,
+                    github_user_id=user.id
+                ).update(number=number)
+
             except GithubLanguage.DoesNotExist:
-                github_language = GithubLanguage.objects.create(
-                    language=language,
-                    github_user=user
+                github_language_bulk_list.append(
+                    GithubLanguage(
+                        language_id=language_id,
+                        github_user_id=user.id,
+                        number=number
+                    )
                 )
 
-            github_language.number += language_data[1]
-            github_language.save(update_fields=['number'])
+        if github_language_bulk_list:
+            GithubLanguage.objects.bulk_create(github_language_bulk_list)
 
         return True
 
@@ -175,6 +192,7 @@ class UpdateGithubInformation(object):
         if res.status_code != 200:
             return False
 
+        update_user_organization_list = []
         for organization_data in json.loads(res.content.decode("UTF-8")):
             try:
                 organization = Organization.objects.filter(
@@ -183,19 +201,17 @@ class UpdateGithubInformation(object):
 
                 organization.description = organization_data.get('description')
                 organization.logo = organization_data.get('avatar_url')
-                organization.save(update_fields=['logo', 'description'])
+                organization.save(update_fields=['description', 'logo'])
+
+                update_user_organization_list.append(organization.id)
 
             except Organization.DoesNotExist:
-                organization = Organization.objects.create(
-                    name=organization_data.get('login'),
-                    description=organization_data.get('description'),
-                    logo=organization_data.get('avatar_url'),
-                )
-
-            if not UserOrganization.objects.filter(github_user=user, organization=organization.id).exists():
-                UserOrganization.objects.create(
-                    github_user=user,
-                    organization=organization
+                self.new_organization_list.append(
+                    Organization(
+                        name=organization_data.get('login'),
+                        description=organization_data.get('description'),
+                        logo=organization_data.get('avatar_url'),
+                    )
                 )
 
             ################################################################################
@@ -217,6 +233,42 @@ class UpdateGithubInformation(object):
                         self.total_contribution += contribution
                         self.update_language(user, repository.get('languages_url'))
                         break
+
+        # organization 이 새로 생기는 경우
+        if self.new_organization_list:
+            organizations = Organization.objects.bulk_create(self.new_organization_list)
+            new_user_organization_list = []
+
+            for organization in organizations:
+                if not UserOrganization.objects.filter(
+                        github_user_id=user.id, organization_id=organization.id).exists():
+                    new_user_organization_list.append(
+                        UserOrganization(
+                            github_user_id=user.id,
+                            organization_id=organization.id
+                        )
+                    )
+
+                UserOrganization.objects.bulk_create(
+                    new_user_organization_list
+                )
+
+        # organization 은 있고 UserOrganization 만 새로 생기는 경우
+        new_user_organization_list = []
+        for organization_id in update_user_organization_list:
+            if not UserOrganization.objects.filter(
+                    github_user_id=user.id, organization_id=organization_id).exists():
+                new_user_organization_list.append(
+                    UserOrganization(
+                        github_user=user,
+                        organization_id=organization_id
+                    )
+                )
+
+        if new_user_organization_list:
+            UserOrganization.objects.bulk_create(
+               new_user_organization_list
+            )
 
         return True
 
