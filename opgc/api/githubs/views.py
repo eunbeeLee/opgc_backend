@@ -22,6 +22,7 @@ class GithubUserViewSet(viewsets.ViewSet,
 
         try:
             github_user = GithubUser.objects.filter(username=username).get()
+            # todo: GithubUser 에 updated(datetime) 필드 추가 후 업데이트 시간 체크해서 업데이트 하는 로직 추가
         except GithubUser.DoesNotExist:
             update_github_information = UpdateGithubInformation(username)
             exists, user_information = update_github_information.check_github_user()
