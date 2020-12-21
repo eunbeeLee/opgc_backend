@@ -62,12 +62,7 @@ class Repository(CustomBaseModel):
     full_name = models.CharField(max_length=100, blank=False)
     owner = models.CharField(max_length=100, blank=False)
     organization = models.CharField(max_length=100, blank=False)
-    language = models.ForeignKey(Language,
-                                 on_delete=models.DO_NOTHING,
-                                 default=None,
-                                 null=True,
-                                 blank=True,
-                                 related_name='language')
+    language = models.CharField(max_length=100, blank=False, default='')
 
 
 class Achievements(CustomBaseModel): # 달성 목표 (재미를 위한 컨텐츠)
