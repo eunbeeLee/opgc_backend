@@ -1,6 +1,10 @@
 import os
 from pathlib import Path
 from conf.settings.base import *
+
+# 배포 버전
+RELEASE_VERSION = '2020.12.21'
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
