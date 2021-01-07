@@ -132,6 +132,11 @@ STATICFILES_DIRS = [
 ]
 
 # 임시
-CORS_ORIGIN_ALLOW_ALL = True
-CORS_ALLOW_CREDENTIALS = True
+CORS_ORIGIN_ALLOW_ALL = False
+# CORS_ALLOW_CREDENTIALS = True
+CORS_ORIGIN_WHITELIST = (
+       'http://localhost:3000',    #React 도메인
+       'http://localhost:8000',    #Django 도메인
+)
+
 # CORS_ALLOWED_ORIGINS = []
