@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 
 import requests
 from django.conf import settings
@@ -304,6 +305,7 @@ class UpdateGithubInformation(object):
             return False
 
         github_user.status = GithubUser.COMPLETED
+        github_user.updated = datetime.now()
         github_user.total_contribution = self.total_contribution
-        github_user.save(update_fields=['status', 'total_contribution'])
+        github_user.save(update_fields=['status', 'updated', 'total_contribution'])
         return github_user
