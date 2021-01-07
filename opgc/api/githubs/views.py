@@ -43,8 +43,8 @@ class GithubUserViewSet(viewsets.ViewSet,
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
         serializer = self.serializer_class(queryset)
-        headers = {'Access-Control-Allow-Origin': "*"}
-        return Response(serializer.data, headers=headers)
+        # headers = {'Access-Control-Allow-Origin': "*"}
+        return Response(serializer.data)
 
     def update(self, request, *args, **kwargs):
         username = self.kwargs.get(self.lookup_url_kwarg)
