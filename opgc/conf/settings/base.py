@@ -11,7 +11,9 @@ INSTALLED_APPS = [
 
     'apps.users',
     'apps.githubs',
-    'apps.reservations'
+    'apps.reservations',
+
+    'corsheaders'
 ]
 
 # SECURITY WARNING: keep the secret key used in production secret!
