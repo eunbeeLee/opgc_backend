@@ -132,7 +132,8 @@ class UpdateGithubInformation(object):
 
         return _contribution
 
-    def get_language(self, language: str) -> Language:
+    @staticmethod
+    def get_language(language: str) -> Language:
         """
             프로그램 언어 가져오거나 생성하는 함수
         """
@@ -208,11 +209,15 @@ class UpdateGithubInformation(object):
                 update_user_organization_list.append(organization.id)
 
             except Organization.DoesNotExist:
+                description = organization_data.get('description')
+                name = organization_data.get('login')
+                logo = organization_data.get('avatar_url')
+
                 new_organization_list.append(
                     Organization.objects.create(
-                        name=organization_data.get('login'),
-                        description=organization_data.get('description') if organization_data.get('description') else '',
-                        logo=organization_data.get('avatar_url'),
+                        name=name,
+                        logo=logo,
+                        description=description if description else '',
                     )
                 )
 
