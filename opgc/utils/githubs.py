@@ -7,6 +7,7 @@ from furl import furl
 from sentry_sdk import capture_exception
 
 from apps.githubs.models import GithubUser, Repository, Language, UserOrganization, Organization, GithubLanguage
+from utils.slack import slack_notify_new_user
 
 FURL = furl('https://api.github.com/')
 
@@ -64,6 +65,7 @@ class UpdateGithubInformation(object):
                 followers=user_information.get('followers'),
                 following=user_information.get('following')
             )
+            slack_notify_new_user(github_user)
 
         # 업데이트전 language number, total contribution of User 리셋
         GithubLanguage.objects.filter(github_user=github_user).update(number=0)
