@@ -1,3 +1,5 @@
+from datetime import timedelta, datetime
+
 from rest_framework import viewsets, mixins, exceptions
 from rest_framework.response import Response
 
@@ -8,6 +10,7 @@ from utils.githubs import UpdateGithubInformation
 
 class GithubUserViewSet(viewsets.ViewSet,
                         mixins.ListModelMixin,
+                        mixins.UpdateModelMixin,
                         mixins.RetrieveModelMixin):
     """
         endpoint : githubs/users/:username
@@ -22,7 +25,6 @@ class GithubUserViewSet(viewsets.ViewSet,
 
         try:
             github_user = GithubUser.objects.filter(username=username).get()
-            # todo: GithubUser 에 updated(datetime) 필드 추가 후 업데이트 시간 체크해서 업데이트 하는 로직 추가
         except GithubUser.DoesNotExist:
             update_github_information = UpdateGithubInformation(username)
             exists, user_information = update_github_information.check_github_user()
@@ -41,6 +43,27 @@ class GithubUserViewSet(viewsets.ViewSet,
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
         serializer = self.serializer_class(queryset)
+
+        return Response(serializer.data)
+
+    def update(self, request, *args, **kwargs):
+        username = self.kwargs.get(self.lookup_url_kwarg)
+
+        try:
+            github_user = GithubUser.objects.filter(username=username).get()
+
+            # 업데이트 한지 하루가 지나야지 재업데이트
+            if github_user.updated + timedelta(1) >= datetime.now():
+                serializer = self.serializer_class(github_user)
+                return Response(serializer.data, status=400)
+
+        except GithubUser.DoesNotExist:
+            raise exceptions.NotFound
+
+        update_github_information = UpdateGithubInformation(username)
+        exists, user_information = update_github_information.check_github_user()
+        user = update_github_information.update(user_information=user_information)
+        serializer = self.serializer_class(user)
 
         return Response(serializer.data)
 

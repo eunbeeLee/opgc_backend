@@ -12,6 +12,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DEBUG = True
 
 ALLOWED_HOSTS = ['OPGC_ALLOWED_HOSTS']
+# 임시
+CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOW_CREDENTIALS = True
+# CORS_ALLOWED_ORIGINS = []
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -21,6 +25,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware'
 ]
 
 ROOT_URLCONF = 'conf.urls.api'
@@ -98,8 +103,8 @@ sentry_sdk.init(
 #########################################
 #           슬랙 채널
 #########################################
-SLACK_CHANNEL_JOINED_USER = ''
-SLACK_CHANNEL_CREATE_MOOD = ''
+SLACK_CHANNEL_JOINED_USER = 'slack_channel_joined_user_key'
+
 
 #########################################
 #      Time Zone and language

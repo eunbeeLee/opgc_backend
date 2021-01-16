@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 
 import requests
 from django.conf import settings
@@ -6,8 +7,10 @@ from furl import furl
 from sentry_sdk import capture_exception
 
 from apps.githubs.models import GithubUser, Repository, Language, UserOrganization, Organization, GithubLanguage
+from utils.slack import slack_notify_new_user
 
 FURL = furl('https://api.github.com/')
+GITHUB_RATE_LIMIT_URL = 'https://api.github.com/rate_limit'
 
 """
     * Authorization - access token 이 있는경우 1시간에 5000번 api 호출 가능 없으면 60번
@@ -63,6 +66,7 @@ class UpdateGithubInformation(object):
                 followers=user_information.get('followers'),
                 following=user_information.get('following')
             )
+            slack_notify_new_user(github_user)
 
         # 업데이트전 language number, total contribution of User 리셋
         GithubLanguage.objects.filter(github_user=github_user).update(number=0)
@@ -131,7 +135,8 @@ class UpdateGithubInformation(object):
 
         return _contribution
 
-    def get_language(self, language: str) -> Language:
+    @staticmethod
+    def get_language(language: str) -> Language:
         """
             프로그램 언어 가져오거나 생성하는 함수
         """
@@ -207,11 +212,15 @@ class UpdateGithubInformation(object):
                 update_user_organization_list.append(organization.id)
 
             except Organization.DoesNotExist:
+                description = organization_data.get('description')
+                name = organization_data.get('login')
+                logo = organization_data.get('avatar_url')
+
                 new_organization_list.append(
                     Organization.objects.create(
-                        name=organization_data.get('login'),
-                        description=organization_data.get('description') if organization_data.get('description') else '',
-                        logo=organization_data.get('avatar_url'),
+                        name=name,
+                        logo=logo,
+                        description=description if description else '',
                     )
                 )
 
@@ -271,8 +280,25 @@ class UpdateGithubInformation(object):
 
         return True
 
+    def check_rete_limit(self) -> bool:
+        # 현재 호출할 수 있는 rate 체크 (token 있는경우 1시간당 5000번 없으면 60번 호출)
+        res = requests.get(GITHUB_RATE_LIMIT_URL, headers=self.headers)
+
+        # todo: remaining(남은 호출 횟수), reset(리셋 시간) 구해서 슬랙에 알림
+        # todo: (이 리셋은 플래그로 DB에서 체크하도록) 그래서 리셋 될동안 Fail 모델에 쌓이게
+        if res.status_code != 200:
+            return False
+
+        return True
+
     def update(self, user_information: dict):
         github_user = None
+
+        # todo: update() 실패가 rate_limit 인지, 중간에 실패나는 경우인지 status 필요
+        # todo: 실패나는 경우 DB에 쌓아서 재실행(크론탭)
+        result = self.check_rete_limit()
+        if not result:
+            return False
 
         try:
             # 1. GithubUser 가 있는지 체크, 없으면 생성
@@ -304,6 +330,7 @@ class UpdateGithubInformation(object):
             return False
 
         github_user.status = GithubUser.COMPLETED
+        github_user.updated = datetime.now()
         github_user.total_contribution = self.total_contribution
-        github_user.save(update_fields=['status', 'total_contribution'])
+        github_user.save(update_fields=['status', 'updated', 'total_contribution'])
         return github_user
