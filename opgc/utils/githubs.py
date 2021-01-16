@@ -10,6 +10,7 @@ from apps.githubs.models import GithubUser, Repository, Language, UserOrganizati
 from utils.slack import slack_notify_new_user
 
 FURL = furl('https://api.github.com/')
+GITHUB_RATE_LIMIT_URL = 'https://api.github.com/rate_limit'
 
 """
     * Authorization - access token 이 있는경우 1시간에 5000번 api 호출 가능 없으면 60번
@@ -279,8 +280,25 @@ class UpdateGithubInformation(object):
 
         return True
 
+    def check_rete_limit(self) -> bool:
+        # 현재 호출할 수 있는 rate 체크 (token 있는경우 1시간당 5000번 없으면 60번 호출)
+        res = requests.get(GITHUB_RATE_LIMIT_URL, headers=self.headers)
+
+        # todo: remaining(남은 호출 횟수), reset(리셋 시간) 구해서 슬랙에 알림
+        # todo: (이 리셋은 플래그로 DB에서 체크하도록) 그래서 리셋 될동안 Fail 모델에 쌓이게
+        if res.status_code != 200:
+            return False
+
+        return True
+
     def update(self, user_information: dict):
         github_user = None
+
+        # todo: update() 실패가 rate_limit 인지, 중간에 실패나는 경우인지 status 필요
+        # todo: 실패나는 경우 DB에 쌓아서 재실행(크론탭)
+        result = self.check_rete_limit()
+        if not result:
+            return False
 
         try:
             # 1. GithubUser 가 있는지 체크, 없으면 생성
