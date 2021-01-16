@@ -103,8 +103,8 @@ sentry_sdk.init(
 #########################################
 #           슬랙 채널
 #########################################
-SLACK_CHANNEL_JOINED_USER = ''
-SLACK_CHANNEL_CREATE_MOOD = ''
+SLACK_CHANNEL_JOINED_USER = 'slack_channel_joined_user_key'
+
 
 #########################################
 #      Time Zone and language
