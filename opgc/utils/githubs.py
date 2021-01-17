@@ -6,7 +6,7 @@ from django.conf import settings
 from furl import furl
 from sentry_sdk import capture_exception
 
-from apps.githubs.models import GithubUser, Repository, Language, UserOrganization, Organization, GithubLanguage
+from apps.githubs.models import GithubUser, Repository, Language, UserOrganization, Organization, UserLanguage
 from utils.slack import slack_notify_new_user
 
 FURL = furl('https://api.github.com/')
@@ -69,7 +69,7 @@ class UpdateGithubInformation(object):
             slack_notify_new_user(github_user)
 
         # 업데이트전 language number, total contribution of User 리셋
-        GithubLanguage.objects.filter(github_user=github_user).update(number=0)
+        UserLanguage.objects.filter(github_user=github_user).update(number=0)
 
         return github_user
 
@@ -169,16 +169,16 @@ class UpdateGithubInformation(object):
         github_language_bulk_list = []
         for language_id, number in update_language_dic.items():
             try:
-                language = GithubLanguage.objects.filter(
+                language = UserLanguage.objects.filter(
                     language_id=language_id,
                     github_user_id=user.id
                 ).get()
                 language.number = number
                 language.save(update_fields=['number'])
 
-            except GithubLanguage.DoesNotExist:
+            except UserLanguage.DoesNotExist:
                 github_language_bulk_list.append(
-                    GithubLanguage(
+                    UserLanguage(
                         language_id=language_id,
                         github_user_id=user.id,
                         number=number
@@ -186,7 +186,7 @@ class UpdateGithubInformation(object):
                 )
 
         if github_language_bulk_list:
-            GithubLanguage.objects.bulk_create(github_language_bulk_list)
+            UserLanguage.objects.bulk_create(github_language_bulk_list)
 
         return True
 

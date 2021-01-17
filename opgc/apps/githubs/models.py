@@ -36,27 +36,40 @@ class GithubUser(CustomBaseModel):
 
 class Language(CustomBaseModel):
     type = models.CharField(verbose_name='language_type', unique=True, max_length=100, blank=False)
+    github_users = models.ManyToManyField(GithubUser, through='UserLanguage', related_name='language', blank=True)
+
+    def __str__(self):
+        return f'{self.type}'
 
 
-class GithubLanguage(CustomBaseModel):
-    language = models.ForeignKey(Language, on_delete=models.CASCADE)
-    github_user = models.ForeignKey(GithubUser, on_delete=models.CASCADE)
-    number = models.IntegerField(default=0) # number of bytes of code written in that language.
+class UserLanguage(CustomBaseModel):
+    github_user = models.ForeignKey(GithubUser, db_constraint=False, on_delete=models.CASCADE)
+    language = models.ForeignKey(Language, db_constraint=False, on_delete=models.CASCADE)
+    number = models.IntegerField(default=0)  # number of bytes of code written in that language.
+
+    class Meta:
+        db_table = 'githubs_user_language'
+        verbose_name = 'user language'
 
 
 class Organization(CustomBaseModel):
     name = models.CharField(verbose_name='name', unique=True, max_length=100, blank=False)
     description = models.CharField(verbose_name='description', max_length=500, blank=False)
     logo = models.CharField(max_length=500, null=True)
+    github_users = models.ManyToManyField(GithubUser, through='UserOrganization', related_name='organization', blank=True)
 
 
 class UserOrganization(CustomBaseModel):
-    github_user = models.ForeignKey(GithubUser, on_delete=models.CASCADE, related_name='user_org')
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='org')
+    github_user = models.ForeignKey(GithubUser, db_constraint=False, on_delete=models.CASCADE)
+    organization = models.ForeignKey(Organization, db_constraint=False, on_delete=models.CASCADE)
+
+    class Meta:
+        db_table = 'githubs_user_organization'
+        verbose_name = 'user organization'
 
 
 class Repository(CustomBaseModel):
-    github_user = models.ForeignKey(GithubUser, on_delete=models.CASCADE, related_name='user')
+    github_user = models.ForeignKey(GithubUser, on_delete=models.CASCADE, related_name='repository')
     contribution = models.IntegerField(verbose_name='contribution', default=0)
     name = models.CharField(max_length=100, blank=False)
     full_name = models.CharField(max_length=100, blank=False)

@@ -16,7 +16,9 @@ class GithubUserViewSet(viewsets.ViewSet,
         endpoint : githubs/users/:username
     """
 
-    queryset = GithubUser.objects.all()
+    queryset = GithubUser.objects.prefetch_related(
+        'organization', 'repository'
+    ).all()
     serializer_class = GithubUserSerializer
     lookup_url_kwarg = 'username'
 
@@ -76,7 +78,7 @@ class OrganizationViewSet(viewsets.ViewSet,
     """
 
     queryset = Organization.objects.all()
-    serializer_class = GithubUserSerializer
+    serializer_class = OrganizationSerializer
     lookup_url_kwarg = 'user_pk'
 
     def get_queryset(self):
@@ -87,7 +89,7 @@ class OrganizationViewSet(viewsets.ViewSet,
 
     def list(self, request, *args, **kwargs):
         organizations = self.get_queryset()
-        serializer = OrganizationSerializer(organizations, many=True)
+        serializer = self.serializer_class(organizations, many=True)
 
         return Response(serializer.data)
 
@@ -99,7 +101,7 @@ class RepositoryViewSet(viewsets.ViewSet,
     """
 
     queryset = Repository.objects.all()
-    serializer_class = GithubUserSerializer
+    serializer_class = RepositorySerializer
     lookup_url_kwarg = 'user_pk'
 
     def get_queryset(self):
@@ -109,7 +111,7 @@ class RepositoryViewSet(viewsets.ViewSet,
         return repositories
 
     def list(self, request, *args, **kwargs):
-        organizations = self.get_queryset()
-        serializer = RepositorySerializer(organizations, many=True)
+        repositories = self.get_queryset()
+        serializer = self.serializer_class(repositories, many=True)
 
         return Response(serializer.data)
