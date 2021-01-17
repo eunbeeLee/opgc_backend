@@ -6,6 +6,7 @@ app_name = 'githubs'
 
 github_user_list = GithubUserViewSet.as_view({
     'get': 'list',
+    'patch': 'update'
 })
 
 organization_list = OrganizationViewSet.as_view({
