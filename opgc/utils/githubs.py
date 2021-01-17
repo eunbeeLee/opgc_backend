@@ -169,10 +169,12 @@ class UpdateGithubInformation(object):
         github_language_bulk_list = []
         for language_id, number in update_language_dic.items():
             try:
-                GithubLanguage.objects.filter(
+                language = GithubLanguage.objects.filter(
                     language_id=language_id,
                     github_user_id=user.id
-                ).update(number=number)
+                ).get()
+                language.number = number
+                language.save(update_fields=['number'])
 
             except GithubLanguage.DoesNotExist:
                 github_language_bulk_list.append(
