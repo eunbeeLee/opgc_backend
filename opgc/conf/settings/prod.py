@@ -10,6 +10,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
+IS_PROD = True
 
 ALLOWED_HOSTS = ['OPGC_ALLOWED_HOSTS']
 # 임시
