@@ -90,6 +90,7 @@ class UpdateGithubInformation(object):
 
         if self.new_repository_list:
             Repository.objects.bulk_create(self.new_repository_list)
+
         self.total_contribution += total_contribution
 
         return True
@@ -116,8 +117,10 @@ class UpdateGithubInformation(object):
                             owner=repository.get('owner')['login'],
                         ).get()
 
-                        repo.contribution = _contribution
-                        repo.save(update_fields=['contribution'])
+                        if repo.contribution != _contribution:
+                            repo.contribution = _contribution
+                            repo.save(update_fields=['contribution'])
+
                     except Repository.DoesNotExist:
                         self.new_repository_list.append(
                             Repository(
@@ -136,17 +139,27 @@ class UpdateGithubInformation(object):
         return _contribution
 
     @staticmethod
-    def get_language(language: str) -> Language:
+    def create_or_update_language(languages_data: dict) -> dict:
         """
             프로그램 언어 가져오거나 생성하는 함수
         """
+        new_language_list = [] # 새로 추가되는 언어
+        update_language_dic = {}
+        for _type, count in languages_data.items():
+            if not Language.objects.filter(type=_type).exists():
+                new_language_list.append(
+                    Language(type=_type)
+                )
 
-        try:
-            language = Language.objects.filter(type=language).get()
-        except Language.DoesNotExist:
-            language = Language.objects.create(type=language)
+            if not update_language_dic.get(_type):
+                update_language_dic[_type] = count
+            else:
+                update_language_dic[_type] += count
 
-        return language
+        if new_language_list:
+            Language.objects.bulk_create(new_language_list)
+
+        return update_language_dic
 
     def update_language(self, user: GithubUser, languages_url: str):
         """
@@ -156,30 +169,27 @@ class UpdateGithubInformation(object):
         if res.status_code != 200:
             return False
 
-        update_language_dic = {}
         languages_data = json.loads(res.content.decode("UTF-8"))
-        for language_data in languages_data.items():
-            language = self.get_language(language_data[0])
-
-            if not update_language_dic.get(language.id):
-                update_language_dic[language.id] = language_data[1]
-            else:
-                update_language_dic[language.id] += language_data[1]
+        update_language_dic = self.create_or_update_language(languages_data)
 
         github_language_bulk_list = []
-        for language_id, number in update_language_dic.items():
+        for _type, number in update_language_dic.items():
             try:
-                language = UserLanguage.objects.filter(
-                    language_id=language_id,
+                user_language = UserLanguage.objects.filter(
+                    language__type=_type,
                     github_user_id=user.id
                 ).get()
-                language.number = number
-                language.save(update_fields=['number'])
+
+                if user_language.number != number:
+                    user_language.number = number
+                    user_language.save(update_fields=['number'])
 
             except UserLanguage.DoesNotExist:
+                # todo: language가 None인 경우가 있을까? 따로 삭제하지는 않는데... 그래도 예외처리 하는게 좋겠지?!
+                language = Language.objects.filter(type=_type).first()
                 github_language_bulk_list.append(
                     UserLanguage(
-                        language_id=language_id,
+                        language_id=language.id,
                         github_user_id=user.id,
                         number=number
                     )
@@ -200,16 +210,23 @@ class UpdateGithubInformation(object):
             return False
 
         update_user_organization_list = []
-        new_organization_list = []
         for organization_data in json.loads(res.content.decode("UTF-8")):
             try:
                 organization = Organization.objects.filter(
                     name=organization_data.get('login')
                 ).get()
 
-                organization.description = organization_data.get('description')
-                organization.logo = organization_data.get('avatar_url')
-                organization.save(update_fields=['description', 'logo'])
+                update_fields = []
+                if organization.description != organization_data.get('description'):
+                    organization.description = organization_data.get('description')
+                    update_fields.append('description')
+
+                if organization.logo != organization_data.get('avatar_url'):
+                    organization.logo = organization_data.get('avatar_url')
+                    update_fields.append('logo')
+
+                if update_fields:
+                    organization.save(update_fields=update_fields)
 
                 update_user_organization_list.append(organization.id)
 
@@ -218,13 +235,12 @@ class UpdateGithubInformation(object):
                 name = organization_data.get('login')
                 logo = organization_data.get('avatar_url')
 
-                new_organization_list.append(
-                    Organization.objects.create(
-                        name=name,
-                        logo=logo,
-                        description=description if description else '',
-                    )
+                organization = Organization.objects.create(
+                    name=name,
+                    logo=logo,
+                    description=description if description else '',
                 )
+                update_user_organization_list.append(organization.id)
 
             ################################################################################
             #    organization 에 있는 repository 중 User 가 Contributor 인 repository 를 등록한다.
@@ -246,39 +262,21 @@ class UpdateGithubInformation(object):
                         self.update_language(user, repository.get('languages_url'))
                         break
 
-        # organization 이 새로 생기는 경우
-        if new_organization_list:
-            new_user_organization_list = []
-            for organization in new_organization_list:
-                if not UserOrganization.objects.filter(
-                        github_user_id=user.id, organization_id=organization.id).exists():
-                    new_user_organization_list.append(
-                        UserOrganization(
-                            github_user_id=user.id,
-                            organization_id=organization.id
-                        )
-                    )
-
-            UserOrganization.objects.bulk_create(
-                new_user_organization_list
-            )
-
-        # organization 은 있고 UserOrganization 만 새로 생기는 경우
         new_user_organization_list = []
         for organization_id in update_user_organization_list:
             if not UserOrganization.objects.filter(
-                    github_user_id=user.id, organization_id=organization_id).exists():
+                    github_user_id=user.id,
+                    organization_id=organization_id
+            ).exists():
                 new_user_organization_list.append(
                     UserOrganization(
-                        github_user=user,
+                        github_user_id=user.id,
                         organization_id=organization_id
                     )
                 )
 
         if new_user_organization_list:
-            UserOrganization.objects.bulk_create(
-               new_user_organization_list
-            )
+            UserOrganization.objects.bulk_create(new_user_organization_list)
 
         return True
 
@@ -335,4 +333,5 @@ class UpdateGithubInformation(object):
         github_user.updated = datetime.now()
         github_user.total_contribution = self.total_contribution
         github_user.save(update_fields=['status', 'updated', 'total_contribution'])
+
         return github_user
