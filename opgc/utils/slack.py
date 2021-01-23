@@ -6,11 +6,12 @@ from apps.githubs.models import GithubUser
 
 def slack_notify_new_user(user: GithubUser, join_type: str = 'Dirty Boyz'):
     channel = settings.SLACK_CHANNEL_JOINED_USER
+    server = 'PROD' if settings.IS_PROD else 'LOCAL'
     attachments = [
         {
             "color": "#36a64f",
-            "title": "유저 등록({})".format(join_type),
-            "pretext": "새로운 유저가 등록되었습니다.",
+            "title": f"유저 등록({join_type})",
+            "pretext": f"[{server}] 새로운 유저가 등록되었습니다.",
             "fields": [
                 {
                     "title": "아이디",
