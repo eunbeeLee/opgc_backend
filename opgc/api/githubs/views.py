@@ -40,6 +40,13 @@ class GithubUserViewSet(viewsets.ViewSet,
             update_github_information = UpdateGithubInformation(username)
             github_user = update_github_information.update()
 
+            if update_github_information.fail_status_code == 404:
+                data = {
+                    'error': f'{username} does not exists.',
+                    'content': '존재하지 않는 Github User 입니다.'
+                }
+                return Response(data, status=404)
+
             if not github_user:
                 # github_user가 없거나 rate_limit로 인해 업데이트를 할 수 없는경우
                 data = {
