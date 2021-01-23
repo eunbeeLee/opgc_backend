@@ -6,11 +6,13 @@ from django.conf import settings
 from furl import furl
 from sentry_sdk import capture_exception
 
-from apps.githubs.models import GithubUser, Repository, Language, UserOrganization, Organization, GithubLanguage
-from utils.slack import slack_notify_new_user
+from apps.githubs.models import GithubUser, Repository, Language, UserOrganization, Organization, UserLanguage
+from apps.reservations.models import UpdateUserQueue
+from utils.slack import slack_notify_new_user, slack_notify_update_user_queue
 
 FURL = furl('https://api.github.com/')
 GITHUB_RATE_LIMIT_URL = 'https://api.github.com/rate_limit'
+CHECK_RATE_REMAIN = 100
 
 """
     * Authorization - access token 이 있는경우 1시간에 5000번 api 호출 가능 없으면 60번
@@ -19,14 +21,16 @@ GITHUB_RATE_LIMIT_URL = 'https://api.github.com/rate_limit'
 
 class UpdateGithubInformation(object):
 
-    def __init__(self, username):
+    def __init__(self, username, is_30_min_script=False):
         self.headers = {'Authorization': f'token {settings.OPGC_TOKEN}'}
         self.total_contribution = 0
         self.username = username
         self.new_repository_list = []
         self.new_organization_list = []
+        self.fail_status_code = 0 # github_api fail status
+        self.is_30_min_script = is_30_min_script
 
-    def check_github_user(self):
+    def check_github_user(self) -> (bool, dict):
         """
             Github User 정보를 가져오거나 생성하는 함수
         """
@@ -34,7 +38,8 @@ class UpdateGithubInformation(object):
         res = requests.get(user_api, headers=self.headers)
 
         if res.status_code != 200:
-            return False, res.status_code
+            self.fail_status_code = res.status_code
+            return False, None
 
         user_information = json.loads(res.content.decode("UTF-8"))
 
@@ -69,7 +74,7 @@ class UpdateGithubInformation(object):
             slack_notify_new_user(github_user)
 
         # 업데이트전 language number, total contribution of User 리셋
-        GithubLanguage.objects.filter(github_user=github_user).update(number=0)
+        UserLanguage.objects.filter(github_user=github_user).update(number=0)
 
         return github_user
 
@@ -79,10 +84,10 @@ class UpdateGithubInformation(object):
         """
         repo_res = requests.get(repositories, headers=self.headers)
         if repo_res.status_code != 200:
+            self.fail_status_code = repo_res.status_code
             return False
 
         res = json.loads(repo_res.content.decode("UTF-8"))
-
         total_contribution = 0
         for repository in res:
             _contribution = self.update_repo(user, repository)
@@ -90,6 +95,7 @@ class UpdateGithubInformation(object):
 
         if self.new_repository_list:
             Repository.objects.bulk_create(self.new_repository_list)
+
         self.total_contribution += total_contribution
 
         return True
@@ -100,8 +106,8 @@ class UpdateGithubInformation(object):
             res = requests.get(repository.get('contributors_url'), headers=self.headers)
 
             if res.status_code != 200:
-                # todo: log 남기기
-                return 0
+                self.fail_status_code = res.status_code
+                return False
 
             for contributor in json.loads(res.content.decode("UTF-8")):
                 # User 타입이고 contributor 가 본인인 경우
@@ -116,8 +122,10 @@ class UpdateGithubInformation(object):
                             owner=repository.get('owner')['login'],
                         ).get()
 
-                        repo.contribution = _contribution
-                        repo.save(update_fields=['contribution'])
+                        if repo.contribution != _contribution:
+                            repo.contribution = _contribution
+                            repo.save(update_fields=['contribution'])
+
                     except Repository.DoesNotExist:
                         self.new_repository_list.append(
                             Repository(
@@ -136,17 +144,27 @@ class UpdateGithubInformation(object):
         return _contribution
 
     @staticmethod
-    def get_language(language: str) -> Language:
+    def create_or_update_language(languages_data: dict) -> dict:
         """
             프로그램 언어 가져오거나 생성하는 함수
         """
+        new_language_list = [] # 새로 추가되는 언어
+        update_language_dic = {}
+        for _type, count in languages_data.items():
+            if not Language.objects.filter(type=_type).exists():
+                new_language_list.append(
+                    Language(type=_type)
+                )
 
-        try:
-            language = Language.objects.filter(type=language).get()
-        except Language.DoesNotExist:
-            language = Language.objects.create(type=language)
+            if not update_language_dic.get(_type):
+                update_language_dic[_type] = count
+            else:
+                update_language_dic[_type] += count
 
-        return language
+        if new_language_list:
+            Language.objects.bulk_create(new_language_list)
+
+        return update_language_dic
 
     def update_language(self, user: GithubUser, languages_url: str):
         """
@@ -154,37 +172,37 @@ class UpdateGithubInformation(object):
         """
         res = requests.get(languages_url, headers=self.headers)
         if res.status_code != 200:
+            self.fail_status_code = res.status_code
             return False
 
-        update_language_dic = {}
         languages_data = json.loads(res.content.decode("UTF-8"))
-        for language_data in languages_data.items():
-            language = self.get_language(language_data[0])
-
-            if not update_language_dic.get(language.id):
-                update_language_dic[language.id] = language_data[1]
-            else:
-                update_language_dic[language.id] += language_data[1]
+        update_language_dic = self.create_or_update_language(languages_data)
 
         github_language_bulk_list = []
-        for language_id, number in update_language_dic.items():
+        for _type, number in update_language_dic.items():
             try:
-                GithubLanguage.objects.filter(
-                    language_id=language_id,
+                user_language = UserLanguage.objects.filter(
+                    language__type=_type,
                     github_user_id=user.id
-                ).update(number=number)
+                ).get()
 
-            except GithubLanguage.DoesNotExist:
+                if user_language.number != number:
+                    user_language.number = number
+                    user_language.save(update_fields=['number'])
+
+            except UserLanguage.DoesNotExist:
+                # todo: language가 None인 경우가 있을까? 따로 삭제하지는 않는데... 그래도 예외처리 하는게 좋겠지?!
+                language = Language.objects.filter(type=_type).first()
                 github_language_bulk_list.append(
-                    GithubLanguage(
-                        language_id=language_id,
+                    UserLanguage(
+                        language_id=language.id,
                         github_user_id=user.id,
                         number=number
                     )
                 )
 
         if github_language_bulk_list:
-            GithubLanguage.objects.bulk_create(github_language_bulk_list)
+            UserLanguage.objects.bulk_create(github_language_bulk_list)
 
         return True
 
@@ -195,19 +213,27 @@ class UpdateGithubInformation(object):
 
         res = requests.get(organization_url, headers=self.headers)
         if res.status_code != 200:
+            self.fail_status_code = res.status_code
             return False
 
         update_user_organization_list = []
-        new_organization_list = []
         for organization_data in json.loads(res.content.decode("UTF-8")):
             try:
                 organization = Organization.objects.filter(
                     name=organization_data.get('login')
                 ).get()
 
-                organization.description = organization_data.get('description')
-                organization.logo = organization_data.get('avatar_url')
-                organization.save(update_fields=['description', 'logo'])
+                update_fields = []
+                if organization.description != organization_data.get('description'):
+                    organization.description = organization_data.get('description')
+                    update_fields.append('description')
+
+                if organization.logo != organization_data.get('avatar_url'):
+                    organization.logo = organization_data.get('avatar_url')
+                    update_fields.append('logo')
+
+                if update_fields:
+                    organization.save(update_fields=update_fields)
 
                 update_user_organization_list.append(organization.id)
 
@@ -216,25 +242,26 @@ class UpdateGithubInformation(object):
                 name = organization_data.get('login')
                 logo = organization_data.get('avatar_url')
 
-                new_organization_list.append(
-                    Organization.objects.create(
-                        name=name,
-                        logo=logo,
-                        description=description if description else '',
-                    )
+                organization = Organization.objects.create(
+                    name=name,
+                    logo=logo,
+                    description=description if description else '',
                 )
+                update_user_organization_list.append(organization.id)
 
             ################################################################################
             #    organization 에 있는 repository 중 User 가 Contributor 인 repository 를 등록한다.
             ################################################################################
             res = requests.get(organization_data.get('repos_url'), headers=self.headers)
             if res.status_code != 200:
+                self.fail_status_code = res.status_code
                 return False
 
             for repository in json.loads(res.content.decode("UTF-8")):
                 res = requests.get(repository.get('contributors_url'), headers=self.headers)
 
                 if res.status_code != 200:
+                    self.fail_status_code = res.status_code
                     return False
 
                 for contributor in json.loads(res.content.decode("UTF-8")):
@@ -244,39 +271,21 @@ class UpdateGithubInformation(object):
                         self.update_language(user, repository.get('languages_url'))
                         break
 
-        # organization 이 새로 생기는 경우
-        if new_organization_list:
-            new_user_organization_list = []
-            for organization in new_organization_list:
-                if not UserOrganization.objects.filter(
-                        github_user_id=user.id, organization_id=organization.id).exists():
-                    new_user_organization_list.append(
-                        UserOrganization(
-                            github_user_id=user.id,
-                            organization_id=organization.id
-                        )
-                    )
-
-            UserOrganization.objects.bulk_create(
-                new_user_organization_list
-            )
-
-        # organization 은 있고 UserOrganization 만 새로 생기는 경우
         new_user_organization_list = []
         for organization_id in update_user_organization_list:
             if not UserOrganization.objects.filter(
-                    github_user_id=user.id, organization_id=organization_id).exists():
+                    github_user_id=user.id,
+                    organization_id=organization_id
+            ).exists():
                 new_user_organization_list.append(
                     UserOrganization(
-                        github_user=user,
+                        github_user_id=user.id,
                         organization_id=organization_id
                     )
                 )
 
         if new_user_organization_list:
-            UserOrganization.objects.bulk_create(
-               new_user_organization_list
-            )
+            UserOrganization.objects.bulk_create(new_user_organization_list)
 
         return True
 
@@ -284,28 +293,44 @@ class UpdateGithubInformation(object):
         # 현재 호출할 수 있는 rate 체크 (token 있는경우 1시간당 5000번 없으면 60번 호출)
         res = requests.get(GITHUB_RATE_LIMIT_URL, headers=self.headers)
 
-        # todo: remaining(남은 호출 횟수), reset(리셋 시간) 구해서 슬랙에 알림
-        # todo: (이 리셋은 플래그로 DB에서 체크하도록) 그래서 리셋 될동안 Fail 모델에 쌓이게
         if res.status_code != 200:
+            # 이 경우는 rate_limit api 가 호출이 안되는건데,
+            # 이런경우가 깃헙장애 or rate_limit 호출에 제한이 있는지 모르겟다.
+            capture_exception('Can not get RATE LIMIT')
+            return False
+
+        """
+            참고: https://docs.gitlab.com/ee/user/admin_area/settings/user_and_ip_rate_limits.html#response-headers
+        """
+        # 왠만하면 100 이상 호출하는 경우가 있어서 100으로 지정
+        content = json.loads(res.content)
+        if content['rate']['remaining'] < CHECK_RATE_REMAIN:
+            self.fail_status_code = 403
             return False
 
         return True
 
-    def update(self, user_information: dict):
+    def update(self):
         github_user = None
 
-        # todo: update() 실패가 rate_limit 인지, 중간에 실패나는 경우인지 status 필요
-        # todo: 실패나는 경우 DB에 쌓아서 재실행(크론탭)
         result = self.check_rete_limit()
         if not result:
+            if not self.is_30_min_script:
+                # 큐에 저장해서 따로 실행
+                UpdateUserQueue.objects.create(
+                    username=self.username,
+                    status=UpdateUserQueue.READY
+                )
+                slack_notify_update_user_queue(self.username)
             return False
 
         try:
-            # 1. GithubUser 가 있는지 체크, 없으면 생성
-            github_data = self.get_or_create_github_user(user_information)
-            if not github_data:
+            result, user_information = self.check_github_user()
+            if not result:
                 return False
-            github_user = github_data
+
+            # 1. GithubUser 가 있는지 체크, 없으면 생성
+            github_user = self.get_or_create_github_user(user_information)
 
             # 2. Repository 정보 업데이트
             is_update_repo = self.update_repositories(github_user, user_information.get('repos_url'))
@@ -313,7 +338,7 @@ class UpdateGithubInformation(object):
                 github_user.status = GithubUser.FAIL
                 github_user.save(update_fields=['status'])
                 return False
-            
+
             # 3. Organization 정보와 연관된 repository 업데이트
             is_update_org = self.update_organization(github_user, user_information.get('organizations_url'))
             if not is_update_org:
@@ -333,4 +358,5 @@ class UpdateGithubInformation(object):
         github_user.updated = datetime.now()
         github_user.total_contribution = self.total_contribution
         github_user.save(update_fields=['status', 'updated', 'total_contribution'])
+
         return github_user

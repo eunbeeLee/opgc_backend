@@ -10,6 +10,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
+IS_PROD = True
 
 ALLOWED_HOSTS = ['OPGC_ALLOWED_HOSTS']
 # 임시
@@ -104,7 +105,7 @@ sentry_sdk.init(
 #           슬랙 채널
 #########################################
 SLACK_CHANNEL_JOINED_USER = 'slack_channel_joined_user_key'
-
+SLACK_CHANNEL_CRONTAB = 'slack_channel_crontab'
 
 #########################################
 #      Time Zone and language
