@@ -105,7 +105,7 @@ sentry_sdk.init(
 #           슬랙 채널
 #########################################
 SLACK_CHANNEL_JOINED_USER = 'slack_channel_joined_user_key'
-
+SLACK_CHANNEL_CRONTAB = 'slack_channel_crontab'
 
 #########################################
 #      Time Zone and language
