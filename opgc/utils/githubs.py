@@ -7,10 +7,12 @@ from furl import furl
 from sentry_sdk import capture_exception
 
 from apps.githubs.models import GithubUser, Repository, Language, UserOrganization, Organization, UserLanguage
-from utils.slack import slack_notify_new_user
+from apps.reservations.models import UpdateUserQueue
+from utils.slack import slack_notify_new_user, slack_notify_update_user_queue
 
 FURL = furl('https://api.github.com/')
 GITHUB_RATE_LIMIT_URL = 'https://api.github.com/rate_limit'
+CHECK_RATE_REMAIN = 100
 
 """
     * Authorization - access token 이 있는경우 1시간에 5000번 api 호출 가능 없으면 60번
@@ -19,14 +21,16 @@ GITHUB_RATE_LIMIT_URL = 'https://api.github.com/rate_limit'
 
 class UpdateGithubInformation(object):
 
-    def __init__(self, username):
+    def __init__(self, username, is_30_min_script=False):
         self.headers = {'Authorization': f'token {settings.OPGC_TOKEN}'}
         self.total_contribution = 0
         self.username = username
         self.new_repository_list = []
         self.new_organization_list = []
+        self.fail_status_code = 0 # github_api fail status
+        self.is_30_min_script = is_30_min_script
 
-    def check_github_user(self):
+    def check_github_user(self) -> (bool, dict):
         """
             Github User 정보를 가져오거나 생성하는 함수
         """
@@ -34,7 +38,8 @@ class UpdateGithubInformation(object):
         res = requests.get(user_api, headers=self.headers)
 
         if res.status_code != 200:
-            return False, res.status_code
+            self.fail_status_code = res.status_code
+            return False, None
 
         user_information = json.loads(res.content.decode("UTF-8"))
 
@@ -79,10 +84,10 @@ class UpdateGithubInformation(object):
         """
         repo_res = requests.get(repositories, headers=self.headers)
         if repo_res.status_code != 200:
+            self.fail_status_code = repo_res.status_code
             return False
 
         res = json.loads(repo_res.content.decode("UTF-8"))
-
         total_contribution = 0
         for repository in res:
             _contribution = self.update_repo(user, repository)
@@ -101,8 +106,8 @@ class UpdateGithubInformation(object):
             res = requests.get(repository.get('contributors_url'), headers=self.headers)
 
             if res.status_code != 200:
-                # todo: log 남기기
-                return 0
+                self.fail_status_code = res.status_code
+                return False
 
             for contributor in json.loads(res.content.decode("UTF-8")):
                 # User 타입이고 contributor 가 본인인 경우
@@ -167,6 +172,7 @@ class UpdateGithubInformation(object):
         """
         res = requests.get(languages_url, headers=self.headers)
         if res.status_code != 200:
+            self.fail_status_code = res.status_code
             return False
 
         languages_data = json.loads(res.content.decode("UTF-8"))
@@ -207,6 +213,7 @@ class UpdateGithubInformation(object):
 
         res = requests.get(organization_url, headers=self.headers)
         if res.status_code != 200:
+            self.fail_status_code = res.status_code
             return False
 
         update_user_organization_list = []
@@ -247,12 +254,14 @@ class UpdateGithubInformation(object):
             ################################################################################
             res = requests.get(organization_data.get('repos_url'), headers=self.headers)
             if res.status_code != 200:
+                self.fail_status_code = res.status_code
                 return False
 
             for repository in json.loads(res.content.decode("UTF-8")):
                 res = requests.get(repository.get('contributors_url'), headers=self.headers)
 
                 if res.status_code != 200:
+                    self.fail_status_code = res.status_code
                     return False
 
                 for contributor in json.loads(res.content.decode("UTF-8")):
@@ -284,28 +293,44 @@ class UpdateGithubInformation(object):
         # 현재 호출할 수 있는 rate 체크 (token 있는경우 1시간당 5000번 없으면 60번 호출)
         res = requests.get(GITHUB_RATE_LIMIT_URL, headers=self.headers)
 
-        # todo: remaining(남은 호출 횟수), reset(리셋 시간) 구해서 슬랙에 알림
-        # todo: (이 리셋은 플래그로 DB에서 체크하도록) 그래서 리셋 될동안 Fail 모델에 쌓이게
         if res.status_code != 200:
+            # 이 경우는 rate_limit api 가 호출이 안되는건데,
+            # 이런경우가 깃헙장애 or rate_limit 호출에 제한이 있는지 모르겟다.
+            capture_exception('Can not get RATE LIMIT')
+            return False
+
+        """
+            참고: https://docs.gitlab.com/ee/user/admin_area/settings/user_and_ip_rate_limits.html#response-headers
+        """
+        # 왠만하면 100 이상 호출하는 경우가 있어서 100으로 지정
+        content = json.loads(res.content)
+        if content['rate']['remaining'] < CHECK_RATE_REMAIN:
+            self.fail_status_code = 403
             return False
 
         return True
 
-    def update(self, user_information: dict):
+    def update(self):
         github_user = None
 
-        # todo: update() 실패가 rate_limit 인지, 중간에 실패나는 경우인지 status 필요
-        # todo: 실패나는 경우 DB에 쌓아서 재실행(크론탭)
         result = self.check_rete_limit()
         if not result:
+            if not self.is_30_min_script:
+                # 큐에 저장해서 따로 실행
+                UpdateUserQueue.objects.create(
+                    username=self.username,
+                    status=UpdateUserQueue.READY
+                )
+                slack_notify_update_user_queue(self.username)
             return False
 
         try:
-            # 1. GithubUser 가 있는지 체크, 없으면 생성
-            github_data = self.get_or_create_github_user(user_information)
-            if not github_data:
+            result, user_information = self.check_github_user()
+            if not result:
                 return False
-            github_user = github_data
+
+            # 1. GithubUser 가 있는지 체크, 없으면 생성
+            github_user = self.get_or_create_github_user(user_information)
 
             # 2. Repository 정보 업데이트
             is_update_repo = self.update_repositories(github_user, user_information.get('repos_url'))
@@ -313,7 +338,7 @@ class UpdateGithubInformation(object):
                 github_user.status = GithubUser.FAIL
                 github_user.save(update_fields=['status'])
                 return False
-            
+
             # 3. Organization 정보와 연관된 repository 업데이트
             is_update_org = self.update_organization(github_user, user_information.get('organizations_url'))
             if not is_update_org:

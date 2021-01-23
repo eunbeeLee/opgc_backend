@@ -28,24 +28,27 @@ class GithubUserViewSet(viewsets.ViewSet,
         try:
             github_user = GithubUser.objects.filter(username=username).get()
         except GithubUser.DoesNotExist:
-            update_github_information = UpdateGithubInformation(username)
-            exists, user_information = update_github_information.check_github_user()
-
-            if not exists:
-                raise exceptions.NotFound
-
-            # todo: GithubUser 정보만 업데이트하고 나머지 따로 처리할건지 생각해야함 (오래걸림 작업이)
-            github_user = update_github_information.update(user_information=user_information)
-
-        if not isinstance(github_user, GithubUser):
-            raise exceptions.NotFound
+            return None
 
         return github_user
 
     def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        serializer = self.serializer_class(queryset)
+        username = self.kwargs.get(self.lookup_url_kwarg)
+        github_user = self.get_queryset()
 
+        if github_user is None:
+            update_github_information = UpdateGithubInformation(username)
+            github_user = update_github_information.update()
+
+            if not github_user:
+                # github_user가 없거나 rate_limit로 인해 업데이트를 할 수 없는경우
+                data = {
+                    'error': 'rate_limit',
+                    'content': 'Github api호출이 가능한 시점이 되면 유저정보를 생성하거나 업데이트합니다.'
+                }
+                return Response(data, status=400)
+
+        serializer = self.serializer_class(github_user)
         return Response(serializer.data)
 
     def update(self, request, *args, **kwargs):
@@ -63,8 +66,12 @@ class GithubUserViewSet(viewsets.ViewSet,
             raise exceptions.NotFound
 
         update_github_information = UpdateGithubInformation(username)
-        exists, user_information = update_github_information.check_github_user()
-        user = update_github_information.update(user_information=user_information)
+        user = update_github_information.update()
+        if not user:
+            # 깃헙 api를 호출할 수 없는경우 (rate_limit)
+            serializer = self.serializer_class(github_user)
+            return Response(serializer.data, status=400)
+
         serializer = self.serializer_class(user)
 
         return Response(serializer.data)
