@@ -3,12 +3,18 @@ from django.db import models
 from apps.helpers.models import CustomBaseModel
 
 
-class Reservation(CustomBaseModel):
-    READY, FAIL = 0, 5
+class UpdateUserQueue(CustomBaseModel):
+    READY, FAIL, PROGRESSING, SUCCESS = 0, 5, 10, 15
     UPDATING_STATUS = (
         (READY, 'ready'),
-        (FAIL, 'fail')
+        (FAIL, 'fail'),
+        (PROGRESSING, 'progressing'),
+        (SUCCESS, 'success'),
     )
 
-    user_idx = models.PositiveIntegerField(db_index=True)
+    username = models.CharField(max_length=200, null=False)
     status = models.SmallIntegerField(choices=UPDATING_STATUS, default=READY, blank=False)
+
+    class Meta:
+        db_table = 'reservations_update_user_queue'
+        verbose_name = 'update_user_queue'

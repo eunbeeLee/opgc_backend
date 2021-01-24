@@ -14,7 +14,7 @@ def run():
     start_time = timeit.default_timer()  # 시작 시간 체크
 
     print('------ start update github user ------')
-    update_github_information = UpdateGithubInformation(USERNAME)
+    update_github_information = UpdateGithubInformation(username=USERNAME)
     exists, user_information = update_github_information.check_github_user()
 
     if not exists:

@@ -3,18 +3,19 @@ from pathlib import Path
 from conf.settings.base import *
 
 # 배포 버전
-RELEASE_VERSION = '2021.1.17'
+RELEASE_VERSION = '2021.1.24'
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
+IS_PROD = True
 
 ALLOWED_HOSTS = ['OPGC_ALLOWED_HOSTS']
 # 임시
 CORS_ORIGIN_ALLOW_ALL = True
-CORS_ALLOW_CREDENTIALS = True
+# CORS_ALLOW_CREDENTIALS = True
 # CORS_ALLOWED_ORIGINS = []
 
 MIDDLEWARE = [
@@ -104,7 +105,7 @@ sentry_sdk.init(
 #           슬랙 채널
 #########################################
 SLACK_CHANNEL_JOINED_USER = 'slack_channel_joined_user_key'
-
+SLACK_CHANNEL_CRONTAB = 'slack_channel_crontab'
 
 #########################################
 #      Time Zone and language
