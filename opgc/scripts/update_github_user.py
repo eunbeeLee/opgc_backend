@@ -15,13 +15,8 @@ def run():
 
     print('------ start update github user ------')
     update_github_information = UpdateGithubInformation(username=USERNAME)
-    exists, user_information = update_github_information.check_github_user()
-
-    if not exists:
-        print('------- update fail ------')
-
     print('------- start update information -------')
-    update_github_information.update(user_information)
+    update_github_information.update()
     print('------- end update information -------')
     terminate_time = timeit.default_timer()  # 종료 시간 체크
     print(f'{terminate_time - start_time}초 걸렸습니다.')
