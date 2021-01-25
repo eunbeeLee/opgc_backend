@@ -25,7 +25,6 @@ class UpdateGithubInformation(object):
         self.headers = {'Authorization': f'token {settings.OPGC_TOKEN}'}
         self.total_contribution = 0
         self.username = username
-        self.new_repository_list = []
         self.new_organization_list = []
         self.fail_status_code = 0 # github_api fail status
         self.is_30_min_script = is_30_min_script
@@ -78,70 +77,86 @@ class UpdateGithubInformation(object):
 
         return github_user
 
-    def update_repositories(self, user: GithubUser, repositories: str):
+    def update_repositories(self, user: GithubUser, repositories: str) -> bool:
         """
             레포지토리 업데이트 함수
         """
+        new_repository_list = []
+        total_contribution = 0
+
         repo_res = requests.get(repositories, headers=self.headers)
         if repo_res.status_code != 200:
             self.fail_status_code = repo_res.status_code
             return False
 
-        res = json.loads(repo_res.content.decode("UTF-8"))
-        total_contribution = 0
-        for repository in res:
-            _contribution = self.update_repo(user, repository)
+        # 유저의 현재 모든 repository를 가져온다.
+        user_repositories = list(Repository.objects.filter(github_user=user))
+        for repository in json.loads(repo_res.content.decode("UTF-8")):
+            _contribution, new_repository = self.update_or_create_repository(user, repository, user_repositories)
+
+            if new_repository:
+                new_repository_list.append(new_repository)
+
             total_contribution += _contribution
 
-        if self.new_repository_list:
-            Repository.objects.bulk_create(self.new_repository_list)
+        if new_repository_list:
+            Repository.objects.bulk_create(new_repository_list)
+
+        # 남아 있는 user_repository는 삭제된 repository라 DB에서도 삭제 해준다.
+        repo_ids = []
+        for repo in user_repositories:
+            repo_ids.append(repo.id)
+
+        if repo_ids:
+            Repository.objects.filter(id__in=repo_ids).delete()
 
         self.total_contribution += total_contribution
 
         return True
 
-    def update_repo(self, user: GithubUser, repository: dict):
-        _contribution = 0
-        if repository.get('fork') is False:
-            res = requests.get(repository.get('contributors_url'), headers=self.headers)
+    def update_or_create_repository(self, user: GithubUser, repository: dict, user_repositories: list):
+        contribution = 0
+        new_repository = None
 
-            if res.status_code != 200:
-                self.fail_status_code = res.status_code
-                return False
+        if repository.get('fork') is True:
+            return 0, None
 
-            for contributor in json.loads(res.content.decode("UTF-8")):
-                # User 타입이고 contributor 가 본인인 경우
-                if contributor.get('type') == 'User' and contributor.get('login') == user.username:
-                    _contribution += contributor.get('contributions')
+        # User가 이 Repository의 contributor인지 확인한다.
+        res = requests.get(repository.get('contributors_url'), headers=self.headers)
+        if res.status_code != 200:
+            return 0, None
 
-                    try:
-                        repo = Repository.objects.filter(
-                            github_user=user,
-                            name=repository.get('name'),
-                            full_name=repository.get('full_name'),
-                            owner=repository.get('owner')['login'],
-                        ).get()
+        for contributor in json.loads(res.content.decode("UTF-8")):
+            # User 타입이고 contributor 가 본인인 경우
+            if contributor.get('type') == 'User' and contributor.get('login') == user.username:
+                contribution = contributor.get('contributions')
+                break
 
-                        if repo.contribution != _contribution:
-                            repo.contribution = _contribution
-                            repo.save(update_fields=['contribution'])
+        if contribution > 0:
+            is_new_repo = True
+            for idx, repo in enumerate(user_repositories):
+                if repo.name == repository.get('name') and repo.full_name == repository.get('full_name'):
+                    if repo.contribution != contribution:
+                        repo.contribution = contribution
+                        repo.save(update_fields=['contribution'])
 
-                    except Repository.DoesNotExist:
-                        self.new_repository_list.append(
-                            Repository(
-                                github_user=user,
-                                name=repository.get('name'),
-                                full_name=repository.get('full_name'),
-                                owner=repository.get('owner')['login'],
-                                contribution=repository.get('contribution', 0),
-                                language=repository.get('language') or ''
-                            )
-                        )
+                    is_new_repo = False
+                    user_repositories.pop(idx)  # 업데이트한 기존 레포지토리는 list에서 제거
                     break
+
+            if is_new_repo:
+                new_repository = Repository(
+                    github_user=user,
+                    name=repository.get('name'),
+                    full_name=repository.get('full_name'),
+                    owner=repository.get('owner')['login'],
+                    contribution=repository.get('contribution', 0),
+                    language=repository.get('language') or ''
+                )
 
             self.update_language(user, repository.get('languages_url'))
 
-        return _contribution
+        return contribution, new_repository
 
     @staticmethod
     def create_or_update_language(languages_data: dict) -> dict:
