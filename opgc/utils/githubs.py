@@ -25,9 +25,8 @@ class UpdateGithubInformation(object):
         self.headers = {'Authorization': f'token {settings.OPGC_TOKEN}'}
         self.total_contribution = 0
         self.username = username
-        self.new_organization_list = []
         self.repositories = [] # 업데이트할 레포지토리 리스트
-        self.update_language_dict = {} # update 할 language
+        self.update_language_dict = {} # 업데이트할 language
         self.fail_status_code = 0 # github_api fail status
         self.is_30_min_script = is_30_min_script
 
@@ -207,11 +206,19 @@ class UpdateGithubInformation(object):
             return False
 
         update_user_organization_list = []
+        user_organizations = list(UserOrganization.objects.filter(
+            github_user_id=user.id).values_list('organization__name', flat=True)
+        )
         for organization_data in json.loads(res.content.decode("UTF-8")):
             try:
                 organization = Organization.objects.filter(
                     name=organization_data.get('login')
                 ).get()
+
+                for idx, org in enumerate(user_organizations):
+                    if organization.name == org:
+                        user_organizations.pop(idx)
+                        break
 
                 update_fields = []
                 if organization.description != organization_data.get('description'):
@@ -274,6 +281,9 @@ class UpdateGithubInformation(object):
 
         if new_user_organization_list:
             UserOrganization.objects.bulk_create(new_user_organization_list)
+
+        if user_organizations:
+            UserOrganization.objects.filter(github_user_id=user.id, name__in=user_organizations).delete()
 
         return True
 
