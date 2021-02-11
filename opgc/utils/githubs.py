@@ -351,7 +351,7 @@ class UpdateGithubInformation(object):
                 github_user.save(update_fields=['status'])
                 return False
 
-            # 5. language update
+            # 5. Userㅣanguage 업데이트
             new_user_languages = []
             language_qs = Language.objects.filter(type__in=self.update_language_dict.keys())
             for language in language_qs:
@@ -380,7 +380,7 @@ class UpdateGithubInformation(object):
         except Exception as e:
             capture_exception(e)
             if github_user:
-                github_user.status = GithubUser.COMPLETED
+                github_user.status = GithubUser.FAIL
                 github_user.save(update_fields=['status'])
 
             return False

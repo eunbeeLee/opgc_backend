@@ -39,10 +39,7 @@ class RepositorySerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
-        if ret['languages']:
-            ret['languages'] = json.loads(ret['languages'])
-        else:
-            ret['languages'] = None
+        ret['languages'] = json.loads(ret['languages']) if ret['languages'] else None
 
         return ret
 
