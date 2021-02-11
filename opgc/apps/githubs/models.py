@@ -75,7 +75,8 @@ class Repository(CustomBaseModel):
     full_name = models.CharField(max_length=100, blank=False)
     owner = models.CharField(max_length=100, blank=False)
     organization = models.CharField(max_length=100, blank=False)
-    language = models.CharField(max_length=100, blank=False, default='')
+    rep_language = models.CharField(max_length=100, blank=False, default='') # 대표언어
+    languages = models.CharField(max_length=1000, blank=False, default='') # 레포지토리에서 사용하는 모든 언어(json)
 
 
 class Achievements(CustomBaseModel): # 달성 목표 (재미를 위한 컨텐츠)
