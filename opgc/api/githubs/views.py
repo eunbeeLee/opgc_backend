@@ -3,12 +3,14 @@ from datetime import timedelta, datetime
 from rest_framework import viewsets, mixins, exceptions
 from rest_framework.response import Response
 
-from api.githubs.serializers import GithubUserSerializer, OrganizationSerializer, RepositorySerializer
-from apps.githubs.models import GithubUser, Organization, Repository
+from api.githubs.serializers import GithubUserSerializer, OrganizationSerializer, RepositorySerializer, \
+    LanguageSerializer
+from api.paginations import IdOrderingPagination
+from apps.githubs.models import GithubUser, Organization, Repository, Language
 from utils.githubs import UpdateGithubInformation
 
 
-class GithubUserViewSet(viewsets.ViewSet,
+class GithubUserViewSet(viewsets.GenericViewSet,
                         mixins.ListModelMixin,
                         mixins.UpdateModelMixin,
                         mixins.RetrieveModelMixin):
@@ -84,7 +86,7 @@ class GithubUserViewSet(viewsets.ViewSet,
         return Response(serializer.data)
 
 
-class OrganizationViewSet(viewsets.ViewSet,
+class OrganizationViewSet(viewsets.GenericViewSet,
                           mixins.ListModelMixin,
                           mixins.RetrieveModelMixin):
     """
@@ -108,7 +110,7 @@ class OrganizationViewSet(viewsets.ViewSet,
         return Response(serializer.data)
 
 
-class RepositoryViewSet(viewsets.ViewSet,
+class RepositoryViewSet(viewsets.GenericViewSet,
                         mixins.ListModelMixin):
     """
         endpoint : githubs/:user_pk/repositories/
@@ -129,3 +131,14 @@ class RepositoryViewSet(viewsets.ViewSet,
         serializer = self.serializer_class(repositories, many=True)
 
         return Response(serializer.data)
+
+
+class LanguageViewSet(viewsets.GenericViewSet,
+                      mixins.ListModelMixin):
+    """
+        endpoint : githubs/languages/
+    """
+
+    queryset = Language.objects.all()
+    serializer_class = LanguageSerializer
+    pagination_class = IdOrderingPagination

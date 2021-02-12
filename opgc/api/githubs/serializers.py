@@ -2,7 +2,7 @@ import json
 
 from rest_framework import serializers
 
-from apps.githubs.models import GithubUser, Organization, Repository, UserLanguage
+from apps.githubs.models import GithubUser, Organization, Repository, UserLanguage, Language
 
 
 class GithubUserSerializer(serializers.ModelSerializer):
@@ -53,3 +53,9 @@ class UserLanguageSerializer(serializers.ModelSerializer):
         ret = super().to_representation(instance)
         ret['language'] = instance.language.__str__()
         return ret
+
+
+class LanguageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Language
+        fields = ('id', 'type')
