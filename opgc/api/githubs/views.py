@@ -10,10 +10,10 @@ from apps.githubs.models import GithubUser, Organization, Repository, Language
 from utils.githubs import UpdateGithubInformation
 
 
-class GithubUserViewSet(viewsets.GenericViewSet,
-                        mixins.ListModelMixin,
+class GithubUserViewSet(mixins.ListModelMixin,
                         mixins.UpdateModelMixin,
-                        mixins.RetrieveModelMixin):
+                        mixins.RetrieveModelMixin,
+                        viewsets.GenericViewSet):
     """
         endpoint : githubs/users/:username
     """
@@ -86,9 +86,9 @@ class GithubUserViewSet(viewsets.GenericViewSet,
         return Response(serializer.data)
 
 
-class OrganizationViewSet(viewsets.GenericViewSet,
-                          mixins.ListModelMixin,
-                          mixins.RetrieveModelMixin):
+class OrganizationViewSet(mixins.ListModelMixin,
+                          mixins.RetrieveModelMixin,
+                          viewsets.GenericViewSet):
     """
         endpoint : githubs/users/:user_pk/organizations/
     """
@@ -110,8 +110,8 @@ class OrganizationViewSet(viewsets.GenericViewSet,
         return Response(serializer.data)
 
 
-class RepositoryViewSet(viewsets.GenericViewSet,
-                        mixins.ListModelMixin):
+class RepositoryViewSet(mixins.ListModelMixin,
+                        viewsets.GenericViewSet):
     """
         endpoint : githubs/:user_pk/repositories/
     """
@@ -133,8 +133,8 @@ class RepositoryViewSet(viewsets.GenericViewSet,
         return Response(serializer.data)
 
 
-class LanguageViewSet(viewsets.GenericViewSet,
-                      mixins.ListModelMixin):
+class LanguageViewSet(mixins.ListModelMixin,
+                      viewsets.GenericViewSet):
     """
         endpoint : githubs/languages/
     """

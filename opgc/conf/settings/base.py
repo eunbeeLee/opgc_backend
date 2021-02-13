@@ -12,6 +12,7 @@ INSTALLED_APPS = [
     'apps.users',
     'apps.githubs',
     'apps.reservations',
+    'apps.rank',
 
     'corsheaders'
 ]
