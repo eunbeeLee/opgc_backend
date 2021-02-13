@@ -30,7 +30,7 @@ class RankService(object):
             return
 
         new_ranks = []
-        for idx in range(1, 10):
+        for idx in range(1, 11):
             new_ranks.append(
                 UserRank(
                     type=_type,
