@@ -7,16 +7,19 @@ import timeit
 
 from utils.githubs import UpdateGithubInformation
 
-USERNAME = 'JAY-Chan9yu'
+USERNAME_LIST = ['JAY-Chan9yu', 'techinpark', '87kangsw', 'ginameee', 'Robin-Haenara',
+                 'milooy', 'zzsza', 'MainRo', 'jinsunee', 'sergeyshaykhullin',
+                 'romanofficial', 'DY29', 'majung2', 'skyepodium']
 
 
 def run():
     start_time = timeit.default_timer()  # 시작 시간 체크
 
-    print('------ start update github user ------')
-    update_github_information = UpdateGithubInformation(username=USERNAME)
     print('------- start update information -------')
-    update_github_information.update()
+    for username in USERNAME_LIST:
+        update_github_information = UpdateGithubInformation(username=username)
+        update_github_information.update()
+
     print('------- end update information -------')
     terminate_time = timeit.default_timer()  # 종료 시간 체크
     print(f'{terminate_time - start_time}초 걸렸습니다.')
