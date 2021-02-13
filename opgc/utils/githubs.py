@@ -300,9 +300,9 @@ class UpdateGithubInformation(object):
             if user_language.language.type in self.update_language_dict.keys():
                 count = self.update_language_dict.pop(user_language.language.type)
 
-                if user_language.language.number != count:
-                    user_language.language.number = count
-                    user_language.language.save(update_fields=['number'])
+                if user_language.number != count:
+                    user_language.number = count
+                    user_language.save(update_fields=['number'])
 
         # 새로운 UserLanguage 생성
         languages = Language.objects.filter(type__in=self.update_language_dict.keys())
