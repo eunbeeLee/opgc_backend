@@ -7,7 +7,7 @@ from chunkator import chunkator
 from django.db import transaction
 
 from apps.githubs.models import GithubUser, Language, UserLanguage
-from apps.rank.models import UserRank
+from apps.ranks.models import UserRank
 from utils.slack import slack_update_ranking_system
 
 rank_type_model = {
