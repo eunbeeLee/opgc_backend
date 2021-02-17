@@ -30,7 +30,7 @@ class RankService(object):
             return
 
         new_ranks = []
-        for idx in range(1, 10):
+        for idx in range(1, 11):
             new_ranks.append(
                 UserRank(
                     type=_type,
@@ -97,10 +97,20 @@ class RankService(object):
 
 
 def run():
+    rank_service = RankService()
+
+    # 먼저 새로 추가된 language가 있으면 추가해준다
+    for _type in rank_type_model.keys():
+        rank_service.create_new_rank(_type=_type)
+
+    languages = Language.objects.all()
+    for language in chunkator(languages, 1000):
+        rank_service.create_new_rank(_type=f'lang-{language.type}')
+
+    # 랭킹 업데이트 시작
     start_time = timeit.default_timer()  # 시작 시간 체크
     slack_update_ranking_system(status='시작', message='')
 
-    rank_service = RankService()
     rank_service.update_all_rank()
 
     terminate_time = timeit.default_timer()  # 종료 시간 체크
