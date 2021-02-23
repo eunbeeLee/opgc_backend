@@ -24,6 +24,7 @@ class UpdateGithubInformation(object):
     def __init__(self, username, is_30_min_script=False):
         self.headers = {'Authorization': f'token {settings.OPGC_TOKEN}'}
         self.total_contribution = 0
+        self.total_stargazers_count = 0
         self.username = username
         self.repositories = [] # 업데이트할 레포지토리 리스트
         self.update_language_dict = {} # 업데이트할 language
@@ -80,7 +81,6 @@ class UpdateGithubInformation(object):
             레포지토리 업데이트 함수
         """
         new_repository_list = []
-        total_contribution = 0
 
         # 유저의 현재 모든 repository를 가져온다.
         user_repositories = list(Repository.objects.filter(github_user=user))
@@ -88,14 +88,38 @@ class UpdateGithubInformation(object):
             is_exist_repo = False
 
             for idx, repo in enumerate(user_repositories):
-                if repo.full_name == repository.get('full_name') and repo.owner == repository.get('owner'):
+                if repo.full_name == repository.get('full_name') and repo.owner == repository.get('owner').get('login'):
                     is_exist_repo = True
                     user_repositories.pop(idx)
+                    update_fields = []
+                    contribution = 0
+
+                    # User가 Repository의 contributor 인지 확인한다.
+                    res = requests.get(repository.get('contributors_url'), headers=self.headers)
+                    if res.status_code != 200:
+                        return False
+
+                    for contributor in json.loads(res.content.decode("UTF-8")):
+                        # User 타입이고 contributor 가 본인인 경우
+                        if contributor.get('type') == 'User' and contributor.get('login') == user.username:
+                            contribution = contributor.get('contributions')
+                            break
 
                     # repository update
-                    if repo.contribution != repository.get('contribution'):
-                        repo.contribution = repository.get('contribution')
-                        repo.save(update_fields=['contribution'])
+                    if repo.contribution != contribution:
+                        repo.contribution = contribution
+                        update_fields.append('contribution')
+
+                    # repository update
+                    if repo.stargazers_count != repository.get('stargazers_count'):
+                        repo.stargazers_count = repository.get('stargazers_count')
+                        update_fields.append('stargazers_count')
+
+                    if update_fields:
+                        repo.save(update_fields=update_fields)
+
+                    self.total_stargazers_count += repository.get('stargazers_count')
+                    self.total_contribution += contribution
                     break
 
             # 새로운 레포지토리
@@ -105,7 +129,7 @@ class UpdateGithubInformation(object):
                 if new_repository:
                     new_repository_list.append(new_repository)
 
-                total_contribution += _contribution
+                self.total_contribution += _contribution
 
         if new_repository_list:
             Repository.objects.bulk_create(new_repository_list)
@@ -117,8 +141,6 @@ class UpdateGithubInformation(object):
 
         if repo_ids:
             Repository.objects.filter(id__in=repo_ids).delete()
-
-        self.total_contribution += total_contribution
 
         return True
 
@@ -137,7 +159,7 @@ class UpdateGithubInformation(object):
         for contributor in json.loads(res.content.decode("UTF-8")):
             # User 타입이고 contributor 가 본인인 경우
             if contributor.get('type') == 'User' and contributor.get('login') == user.username:
-                contribution = contributor.get('contributions')
+                contribution = contributor.get('contributions', 0)
                 languages = ''
 
                 if contribution > 0:
@@ -148,10 +170,12 @@ class UpdateGithubInformation(object):
                     name=repository.get('name'),
                     full_name=repository.get('full_name'),
                     owner=repository.get('owner')['login'],
-                    contribution=repository.get('contribution', 0),
+                    contribution=contribution,
+                    stargazers_count=repository.get('stargazers_count', 0),
                     rep_language=repository.get('language') or '',
                     languages=languages
                 )
+                self.total_stargazers_count += repository.get('stargazers_count')
                 break
 
         return contribution, new_repository
@@ -205,9 +229,8 @@ class UpdateGithubInformation(object):
                         break
 
                 update_fields = []
-                if organization.description != organization_data.get('description'):
-                    description = organization_data.get('description')
-                    organization.description = description if description else ''
+                if organization.description != organization_data.get('description', ''):
+                    organization.description = organization_data.get('description', '')
                     update_fields.append('description')
 
                 if organization.logo != organization_data.get('avatar_url'):
@@ -411,6 +434,7 @@ class UpdateGithubInformation(object):
         github_user.status = GithubUser.COMPLETED
         github_user.updated = datetime.now()
         github_user.total_contribution = self.total_contribution
-        github_user.save(update_fields=['status', 'updated', 'total_contribution'])
+        github_user.total_stargazers_count = self.total_stargazers_count
+        github_user.save(update_fields=['status', 'updated', 'total_contribution', 'total_stargazers_count'])
 
         return github_user
