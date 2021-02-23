@@ -3,7 +3,7 @@ from pathlib import Path
 from conf.settings.base import *
 
 # 배포 버전
-RELEASE_VERSION = '2021.2.14'
+RELEASE_VERSION = '2021.2.18'
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -135,3 +135,34 @@ STATIC_ROOT = ''
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
+
+
+# ===========================================================
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "OPGC_REDIS_DEFAULT_HOST",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "PARSER_CLASS": "redis.connection.HiredisParser",
+            "COMPRESSOR": "django_redis.compressors.zlib.ZlibCompressor",
+            "IGNORE_EXCEPTIONS": True,
+        }
+    }
+}
+
+INSTALLED_APPS += ['cacheops']
+
+CACHEOPS_LRU = True
+CACHEOPS_REDIS = "OPGC_REDIS_CACHEOPS_HOST" # local redis
+
+CACHEOPS_DEFAULTS = {
+    'timeout': 60 * 60 * 1, # 1시간
+    'ops': 'all',
+    'cache_on_save': False
+}
+
+CACHEOPS = {
+    'githubs.*': {},
+    '*.*': {},
+}
