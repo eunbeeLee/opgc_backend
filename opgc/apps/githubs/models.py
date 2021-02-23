@@ -24,6 +24,7 @@ class GithubUser(CustomBaseModel):
     username = models.CharField(unique=True, max_length=200, null=False) # Github ID
     profile_image = models.CharField(max_length=500, null=True)  # Github Profile Image URL
     total_contribution = models.IntegerField(verbose_name='contribution', default=0)
+    total_stargazers_count = models.IntegerField(default=0)
     tier = models.SmallIntegerField(choices=GITHUB_RANK_CHOICES, default=UNRANK, blank=False)
     company = models.CharField(max_length=100, default='', blank=True)
     bio = models.CharField(max_length=200, default='', blank=True) # 설명
@@ -71,6 +72,7 @@ class UserOrganization(CustomBaseModel):
 class Repository(CustomBaseModel):
     github_user = models.ForeignKey(GithubUser, on_delete=models.CASCADE, related_name='repository')
     contribution = models.IntegerField(verbose_name='contribution', default=0)
+    stargazers_count = models.IntegerField(default=0)
     name = models.CharField(max_length=100, blank=False)
     full_name = models.CharField(max_length=100, blank=False)
     owner = models.CharField(max_length=100, blank=False)
