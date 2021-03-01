@@ -39,7 +39,7 @@ class GithubInformationService(object):
         user_api = FURL.set(path=f'/users/{self.username}').url
         res = requests.get(user_api, headers=self.headers)
 
-        if res.status_code != 404:
+        if res.status_code == 404:
             raise GitHubUserDoesNotExist()
         elif res.status_code != 200:
             self.update_fail(res)
