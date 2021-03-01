@@ -5,7 +5,9 @@
 """
 import timeit
 
-from utils.githubs import UpdateGithubInformation
+from sentry_sdk import capture_exception
+
+from utils.githubs import GithubInformationService
 
 USERNAME_LIST = ['JAY-Chan9yu', 'techinpark', '87kangsw', 'ginameee', 'Robin-Haenara',
                  'milooy', 'zzsza', 'MainRo', 'jinsunee', 'sergeyshaykhullin',
@@ -17,8 +19,12 @@ def run():
 
     print('------- start update information -------')
     for username in USERNAME_LIST:
-        update_github_information = UpdateGithubInformation(username=username)
-        update_github_information.update()
+        try:
+            github_information_service = GithubInformationService(username=username)
+            github_information_service.update()
+
+        except Exception as e:
+            capture_exception(e)
 
     print('------- end update information -------')
     terminate_time = timeit.default_timer()  # 종료 시간 체크
