@@ -11,6 +11,14 @@ class RankSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
-        ret['github_user'] = instance.github_user.username if instance.github_user else None
+
+        if instance.github_user:
+            ret['github_user'] = {
+                'id': instance.github_user.id,
+                'username': instance.github_user.username,
+                'profile_image': instance.github_user.profile_image,
+            }
+        else:
+            ret['github_user'] = None
 
         return ret
