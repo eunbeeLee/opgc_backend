@@ -35,7 +35,7 @@ class RepositorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Repository
         fields = ('id', 'contribution', 'name', 'full_name', 'owner',
-                  'organization', 'rep_language', 'languages')
+                  'organization', 'stargazers_count', 'rep_language', 'languages')
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)

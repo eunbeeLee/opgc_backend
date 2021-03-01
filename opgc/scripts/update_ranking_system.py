@@ -12,6 +12,7 @@ from utils.slack import slack_update_ranking_system
 
 rank_type_model = {
     'total_contribution': GithubUser,
+    'total_stargazers_count': GithubUser,
     'followers': GithubUser,
     'following': GithubUser
 }

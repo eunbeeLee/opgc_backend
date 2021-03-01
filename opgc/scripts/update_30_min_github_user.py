@@ -6,9 +6,11 @@
 import timeit
 
 from chunkator import chunkator
+from sentry_sdk import capture_exception
 
 from apps.reservations.models import UpdateUserQueue
-from utils.githubs import UpdateGithubInformation
+from utils.exceptions import RateLimit
+from utils.githubs import GithubInformationService
 from utils.slack import slack_update_github_user, slack_notify_update_fail
 
 
@@ -19,24 +21,27 @@ def run():
         status__in=[UpdateUserQueue.READY, UpdateUserQueue.FAIL]
     )
 
+    if not update_user_queue_qs:
+        return
+
     slack_update_github_user(status='시작', message='')
     update_user_count = 0
     for user_queue in chunkator(update_user_queue_qs, 1000):
-        update_github_information = UpdateGithubInformation(user_queue.username, True)
-        update_github_information.update()
+        try:
+            github_information_service = GithubInformationService(user_queue.username, True)
+            github_information_service.update()
 
-        # rate_limit로 api호출 불가능한 상황
-        if update_github_information.fail_status_code == 403:
-            user_queue.status = UpdateUserQueue.FAIL
+            user_queue.status = UpdateUserQueue.SUCCESS
             user_queue.save(update_fields=['status'])
+            update_user_count += 1
+
+        except RateLimit:
             slack_notify_update_fail(
                 message=f'Rate Limit 로 인해 업데이트가 실패되었습니다. {update_user_count}명만 업데이트 되었습니다.'
             )
-            return
 
-        user_queue.status = UpdateUserQueue.SUCCESS
-        user_queue.save(update_fields=['status'])
-        update_user_count += 1
+        except Exception as e:
+            capture_exception(e)
 
     terminate_time = timeit.default_timer()  # 종료 시간 체크
     slack_update_github_user(
