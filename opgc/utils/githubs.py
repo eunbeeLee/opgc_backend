@@ -14,6 +14,7 @@ from utils.slack import slack_notify_new_user, slack_notify_update_user_queue
 FURL = furl('https://api.github.com/')
 GITHUB_RATE_LIMIT_URL = 'https://api.github.com/rate_limit'
 CHECK_RATE_REMAIN = 100
+USER_UPDATE_FIELDS = ['avatar_url', 'company', 'bio', 'blog', 'public_repos', 'followers', 'following']
 
 """
     * Authorization - access token 이 있는경우 1시간에 5000번 api 호출 가능 없으면 60번
@@ -48,18 +49,24 @@ class GithubInformationService(object):
 
     def get_or_create_github_user(self, user_information: dict):
         try:
+            update_fields = ['status']
             github_user = GithubUser.objects.filter(username=self.username).get()
             github_user.status = GithubUser.UPDATING
-            github_user.company = user_information.get('company') or ''
-            github_user.bio = user_information.get('bio') or ''
-            github_user.blog = user_information.get('blog') or ''
-            github_user.public_repos = user_information.get('public_repos')
-            github_user.followers = user_information.get('followers')
-            github_user.following = user_information.get('following')
 
-            github_user.save(
-                update_fields=['status', 'company', 'bio', 'blog', 'public_repos', 'followers', 'following']
-            )
+            for key, value in user_information.items():
+                if key in USER_UPDATE_FIELDS:
+                    if key == 'avatar_url':
+                        # 프로필 이미지만 필드명을 다르게 함   
+                        if getattr(github_user, 'profile_image', '') != value:
+                            setattr(github_user, 'profile_image', value)
+                            update_fields.append('profile_image')
+                        continue
+
+                    if getattr(github_user, key, '') != value:
+                        setattr(github_user, key, value)
+                        update_fields.append(key)
+
+            github_user.save(update_fields=update_fields)
 
         except GithubUser.DoesNotExist:
             github_user = GithubUser.objects.create(
