@@ -2,21 +2,14 @@ import os
 from pathlib import Path
 from conf.settings.base import *
 
-# 배포 버전
-RELEASE_VERSION = '2021.3.1'
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-IS_PROD = True
+DEBUG = False
+IS_PROD = False
 
-ALLOWED_HOSTS = ['OPGC_ALLOWED_HOSTS']
-# 임시
-CORS_ORIGIN_ALLOW_ALL = True
-# CORS_ALLOW_CREDENTIALS = True
-# CORS_ALLOWED_ORIGINS = []
+ALLOWED_HOSTS = ['*', 'localhost:8000', '127.0.0.1', 'localhost']
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -50,22 +43,17 @@ TEMPLATES = [
 WSGI_APPLICATION = 'opgc.wsgi.application'
 
 #########################################
-#           DataBase
+#     GitHub Action 데이터 베이스 세팅
 #########################################
-# https://docs.djangoproject.com/en/3.1/ref/settings/#databases
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'opgcdb',
-        'OPTIONS': {
-            'read_default_file': 'OPGC_DB_CONF',
-            'charset': 'utf8mb4',
-            'init_command': 'set collation_connection=utf8mb4_unicode_ci; SET default_storage_engine=INNODB; SET SQL_MODE=STRICT_TRANS_TABLES;',
-        },
-        'CONN_MAX_AGE': 600,
+        'NAME': 'opgc_ci_db',
+        'USER': 'root',
+        'HOST': '127.0.0.1',
+        'PASSWORD': 'ci_user_pw123',
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/3.1/ref/settings/#auth-password-validators
@@ -86,26 +74,10 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 #########################################
-#           센트리 리포팅
-#########################################
-import sentry_sdk
-from sentry_sdk.integrations.django import DjangoIntegration
-
-sentry_sdk.init(
-    dsn="OPGC_SENTRY_REPORTING",
-    integrations=[DjangoIntegration()],
-    traces_sample_rate=1.0,
-
-    # If you wish to associate users to errors (assuming you are using
-    # django.contrib.auth) you may enable sending PII data.
-    send_default_pii=True
-)
-
-#########################################
 #           슬랙 채널
 #########################################
-SLACK_CHANNEL_JOINED_USER = 'slack_channel_joined_user_key'
-SLACK_CHANNEL_CRONTAB = 'slack_channel_crontab'
+SLACK_CHANNEL_JOINED_USER = None
+SLACK_CHANNEL_CRONTAB = None
 
 #########################################
 #      Time Zone and language
@@ -135,34 +107,3 @@ STATIC_ROOT = ''
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
-
-
-# ===========================================================
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "OPGC_REDIS_DEFAULT_HOST",
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            "PARSER_CLASS": "redis.connection.HiredisParser",
-            "COMPRESSOR": "django_redis.compressors.zlib.ZlibCompressor",
-            "IGNORE_EXCEPTIONS": True,
-        }
-    }
-}
-
-INSTALLED_APPS += ['cacheops']
-
-CACHEOPS_LRU = True
-CACHEOPS_REDIS = "OPGC_REDIS_CACHEOPS_HOST" # local redis
-
-CACHEOPS_DEFAULTS = {
-    'timeout': 60 * 60 * 1, # 1시간
-    'ops': 'all',
-    'cache_on_save': False
-}
-
-CACHEOPS = {
-    'githubs.*': {},
-    '*.*': {},
-}
