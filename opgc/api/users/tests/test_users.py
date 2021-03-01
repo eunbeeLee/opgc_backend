@@ -3,7 +3,7 @@ from django.urls import reverse
 from rest_framework import status
 
 from apps.users.models import User
-from opgc.tests.request_helper import pytest_request
+from test_helper.request_helper import pytest_request
 
 
 @pytest.mark.urls(urls='conf.urls.api')
