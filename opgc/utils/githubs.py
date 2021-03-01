@@ -50,9 +50,9 @@ class GithubInformationService(object):
         try:
             github_user = GithubUser.objects.filter(username=self.username).get()
             github_user.status = GithubUser.UPDATING
-            github_user.company = user_information.get('company', '')
-            github_user.bio = user_information.get('bio', '')
-            github_user.blog = user_information.get('blog', '')
+            github_user.company = user_information.get('company') or ''
+            github_user.bio = user_information.get('bio') or ''
+            github_user.blog = user_information.get('blog') or ''
             github_user.public_repos = user_information.get('public_repos')
             github_user.followers = user_information.get('followers')
             github_user.following = user_information.get('following')
@@ -65,9 +65,9 @@ class GithubInformationService(object):
             github_user = GithubUser.objects.create(
                 username=self.username,
                 profile_image=user_information.get('avatar_url'),
-                company=user_information.get('company', ''),
-                bio=user_information.get('bio', ''),
-                blog=user_information.get('blog', ''),
+                company=user_information.get('company') or '',
+                bio=user_information.get('bio') or '',
+                blog=user_information.get('blog') or '',
                 public_repos=user_information.get('public_repos'),
                 followers=user_information.get('followers'),
                 following=user_information.get('following')
