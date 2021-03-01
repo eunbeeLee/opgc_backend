@@ -6,7 +6,7 @@ from utils.githubs import GithubInformationService
 
 @pytest.fixture(scope='function')
 def mock_slack_notify_new_user():
-    with mock.patch('utils.slack.slack_notify_new_user') as patch:
+    with mock.patch('utils.githubs.slack_notify_new_user') as patch:
         yield patch
 
 
@@ -34,4 +34,5 @@ def test_get_or_create_github_user(github_context, mock_slack_notify_new_user):
             # 프로필 이미지만 필드명을 다르게 함
             assert getattr(github_user, 'profile_image', None) == value
             continue
+
         assert getattr(github_user, key, None) == value
