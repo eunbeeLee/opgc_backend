@@ -2,12 +2,15 @@ from datetime import timedelta, datetime
 
 from rest_framework import viewsets, mixins, exceptions
 from rest_framework.response import Response
+from sentry_sdk import capture_exception
 
+from api.exceptions import NotExistsGithubUser, RateLimitGithubAPI
 from api.githubs.serializers import GithubUserSerializer, OrganizationSerializer, RepositorySerializer, \
     LanguageSerializer
 from api.paginations import IdOrderingPagination
 from apps.githubs.models import GithubUser, Organization, Repository, Language
-from utils.githubs import UpdateGithubInformation
+from utils.exceptions import GitHubUserDoesNotExist, RateLimit
+from utils.githubs import GithubInformationService
 
 
 class GithubUserViewSet(mixins.ListModelMixin,
@@ -39,51 +42,48 @@ class GithubUserViewSet(mixins.ListModelMixin,
         github_user = self.get_queryset()
 
         if github_user is None:
-            update_github_information = UpdateGithubInformation(username)
-            github_user = update_github_information.update()
+            try:
+                github_information_service = GithubInformationService(username)
+                github_user = github_information_service.update()
 
-            if update_github_information.fail_status_code == 404:
-                data = {
-                    'error': f'{username} does not exists.',
-                    'content': '존재하지 않는 Github User 입니다.'
-                }
-                return Response(data, status=404)
+            except GitHubUserDoesNotExist:
+                raise NotExistsGithubUser()
 
-            if not github_user:
-                # github_user가 없거나 rate_limit로 인해 업데이트를 할 수 없는경우
-                data = {
-                    'error': 'rate_limit',
-                    'content': 'Github api호출이 가능한 시점이 되면 유저정보를 생성하거나 업데이트합니다.'
-                }
-                return Response(data, status=400)
+            except RateLimit:
+                raise RateLimitGithubAPI()
+
+            except Exception as e:
+                capture_exception(e)
 
         serializer = self.serializer_class(github_user)
         return Response(serializer.data)
 
     def update(self, request, *args, **kwargs):
         username = self.kwargs.get(self.lookup_url_kwarg)
+        response_data = {}
 
         try:
             github_user = GithubUser.objects.filter(username=username).get()
 
             # 업데이트 한지 하루가 지나야지 재업데이트
             if github_user.updated + timedelta(1) >= datetime.now():
-                serializer = self.serializer_class(github_user)
-                return Response(serializer.data, status=400)
+                response_data = self.serializer_class(github_user).data
+                return Response(response_data, status=400)
+
+            github_information_service = GithubInformationService(username)
+            user = github_information_service.update()
+            response_data = self.serializer_class(user).data
 
         except GithubUser.DoesNotExist:
             raise exceptions.NotFound
 
-        update_github_information = UpdateGithubInformation(username)
-        user = update_github_information.update()
-        if not user:
-            # 깃헙 api를 호출할 수 없는경우 (rate_limit)
-            serializer = self.serializer_class(github_user)
-            return Response(serializer.data, status=400)
+        except RateLimit:
+            raise RateLimitGithubAPI()
 
-        serializer = self.serializer_class(user)
+        except Exception as e:
+            capture_exception(e)
 
-        return Response(serializer.data)
+        return Response(response_data)
 
 
 class OrganizationViewSet(mixins.ListModelMixin,
