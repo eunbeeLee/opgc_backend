@@ -20,7 +20,7 @@ CHECK_RATE_REMAIN = 100
 """
 
 
-class UpdateGithubInformation(object):
+class GithubInformationService(object):
     github_user = None
 
     def __init__(self, username, is_30_min_script=False):
