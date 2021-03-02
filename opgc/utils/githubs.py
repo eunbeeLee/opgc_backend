@@ -362,7 +362,7 @@ class GithubInformationService(object):
 
     def insert_queue(self):
         # 큐에 저장해서 30분만다 실행되는 스크립트에서 업데이트
-        if not UpdateUserQueue.objects.filter(username=self.username):
+        if not UpdateUserQueue.objects.filter(username=self.username).exists():
             UpdateUserQueue.objects.create(
                 username=self.username,
                 status=UpdateUserQueue.READY
