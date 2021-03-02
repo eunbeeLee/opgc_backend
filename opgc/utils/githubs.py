@@ -14,7 +14,8 @@ from utils.slack import slack_notify_new_user, slack_notify_update_user_queue
 FURL = furl('https://api.github.com/')
 GITHUB_RATE_LIMIT_URL = 'https://api.github.com/rate_limit'
 CHECK_RATE_REMAIN = 100
-USER_UPDATE_FIELDS = ['avatar_url', 'company', 'bio', 'blog', 'public_repos', 'followers', 'following']
+USER_UPDATE_FIELDS = ['avatar_url', 'company', 'bio', 'blog', 'public_repos', 'followers', 'following',
+                      'name', 'email', 'location']
 
 """
     * Authorization - access token 이 있는경우 1시간에 5000번 api 호출 가능 없으면 60번
