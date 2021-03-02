@@ -22,7 +22,10 @@ class GithubUser(CustomBaseModel):
     )
 
     username = models.CharField(unique=True, max_length=200, null=False) # Github ID
-    profile_image = models.CharField(max_length=500, null=True)  # Github Profile Image URL
+    name = models.CharField(max_length=200, default='', blank=True)  # name
+    email = models.CharField(max_length=200, default='', blank=True)
+    location = models.CharField(max_length=200, default='', blank=True) # country
+    avatar_url = models.CharField(max_length=500, default='', blank=True)  # Github Profile Image URL
     total_contribution = models.IntegerField(verbose_name='contribution', default=0)
     total_stargazers_count = models.IntegerField(default=0)
     tier = models.SmallIntegerField(choices=GITHUB_RANK_CHOICES, default=UNRANK, blank=False)
