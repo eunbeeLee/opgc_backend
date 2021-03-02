@@ -64,7 +64,10 @@ class GithubInformationService(object):
         except GithubUser.DoesNotExist:
             github_user = GithubUser.objects.create(
                 username=self.username,
-                avatar_url=user_information.get('avatar_url'),
+                name=user_information.get('name') or '',
+                email=user_information.get('email') or '',
+                location=user_information.get('location') or '',
+                avatar_url=user_information.get('avatar_url') or '',
                 company=user_information.get('company') or '',
                 bio=user_information.get('bio') or '',
                 blog=user_information.get('blog') or '',
