@@ -30,9 +30,4 @@ def test_get_or_create_github_user(github_context, mock_slack_notify_new_user):
 
     assert github_user is not None
     for key, value in test_user_information.items():
-        if key == 'avatar_url':
-            # 프로필 이미지만 필드명을 다르게 함
-            assert getattr(github_user, 'profile_image', None) == value
-            continue
-
         assert getattr(github_user, key, None) == value

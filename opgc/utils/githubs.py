@@ -55,13 +55,6 @@ class GithubInformationService(object):
 
             for key, value in user_information.items():
                 if key in USER_UPDATE_FIELDS:
-                    if key == 'avatar_url':
-                        # 프로필 이미지만 필드명을 다르게 함   
-                        if getattr(github_user, 'profile_image', '') != value:
-                            setattr(github_user, 'profile_image', value)
-                            update_fields.append('profile_image')
-                        continue
-
                     if getattr(github_user, key, '') != value:
                         setattr(github_user, key, value)
                         update_fields.append(key)
@@ -71,7 +64,7 @@ class GithubInformationService(object):
         except GithubUser.DoesNotExist:
             github_user = GithubUser.objects.create(
                 username=self.username,
-                profile_image=user_information.get('avatar_url'),
+                avatar_url=user_information.get('avatar_url'),
                 company=user_information.get('company') or '',
                 bio=user_information.get('bio') or '',
                 blog=user_information.get('blog') or '',

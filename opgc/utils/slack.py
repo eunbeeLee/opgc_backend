@@ -29,7 +29,7 @@ def slack_notify_new_user(user: GithubUser, join_type: str = 'Dirty Boyz'):
                     "short": True
                 }
             ],
-            "thumb_url": user.profile_image
+            "thumb_url": user.avatar_url
         }
     ]
 

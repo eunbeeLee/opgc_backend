@@ -16,7 +16,7 @@ class RankSerializer(serializers.ModelSerializer):
             ret['github_user'] = {
                 'id': instance.github_user.id,
                 'username': instance.github_user.username,
-                'profile_image': instance.github_user.profile_image,
+                'avatar_url': instance.github_user.avatar_url,
             }
         else:
             ret['github_user'] = None
