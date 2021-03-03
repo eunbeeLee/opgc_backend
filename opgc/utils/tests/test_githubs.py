@@ -16,6 +16,9 @@ def test_get_or_create_github_user(github_context, mock_slack_notify_new_user):
     username = 'JAY-Chan9yu'
     test_user_information = {
         'username': username,
+        'name': 'jay',
+        'email': 'jay@test.com',
+        'location': 'Republic of Korea',
         'avatar_url': 'https://avatars.githubusercontent.com/u/24591259?v=4',
         'company': 'DirtyBoyz',
         'bio': '',
