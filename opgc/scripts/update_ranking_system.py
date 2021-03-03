@@ -10,7 +10,9 @@ from apps.githubs.models import GithubUser, Language, UserLanguage
 from apps.ranks.models import UserRank
 from utils.slack import slack_update_ranking_system
 
+# todo : 이거 수정하기 (원래 필드 : 모델 이런형태로 하려고 했는데 그렇게 안씀)
 rank_type_model = {
+    'continuous_commit_day': GithubUser,
     'total_contribution': GithubUser,
     'total_stargazers_count': GithubUser,
     'followers': GithubUser,
