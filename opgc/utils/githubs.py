@@ -14,7 +14,8 @@ from utils.slack import slack_notify_new_user, slack_notify_update_user_queue
 FURL = furl('https://api.github.com/')
 GITHUB_RATE_LIMIT_URL = 'https://api.github.com/rate_limit'
 CHECK_RATE_REMAIN = 100
-USER_UPDATE_FIELDS = ['avatar_url', 'company', 'bio', 'blog', 'public_repos', 'followers', 'following']
+USER_UPDATE_FIELDS = ['avatar_url', 'company', 'bio', 'blog', 'public_repos', 'followers', 'following',
+                      'name', 'email', 'location']
 
 """
     * Authorization - access token 이 있는경우 1시간에 5000번 api 호출 가능 없으면 60번
@@ -55,13 +56,6 @@ class GithubInformationService(object):
 
             for key, value in user_information.items():
                 if key in USER_UPDATE_FIELDS:
-                    if key == 'avatar_url':
-                        # 프로필 이미지만 필드명을 다르게 함   
-                        if getattr(github_user, 'profile_image', '') != value:
-                            setattr(github_user, 'profile_image', value)
-                            update_fields.append('profile_image')
-                        continue
-
                     if getattr(github_user, key, '') != value:
                         setattr(github_user, key, value)
                         update_fields.append(key)
@@ -71,7 +65,10 @@ class GithubInformationService(object):
         except GithubUser.DoesNotExist:
             github_user = GithubUser.objects.create(
                 username=self.username,
-                profile_image=user_information.get('avatar_url'),
+                name=user_information.get('name') or '',
+                email=user_information.get('email') or '',
+                location=user_information.get('location') or '',
+                avatar_url=user_information.get('avatar_url') or '',
                 company=user_information.get('company') or '',
                 bio=user_information.get('bio') or '',
                 blog=user_information.get('blog') or '',
@@ -365,7 +362,7 @@ class GithubInformationService(object):
 
     def insert_queue(self):
         # 큐에 저장해서 30분만다 실행되는 스크립트에서 업데이트
-        if not UpdateUserQueue.objects.filter(username=self.username):
+        if not UpdateUserQueue.objects.filter(username=self.username).exists():
             UpdateUserQueue.objects.create(
                 username=self.username,
                 status=UpdateUserQueue.READY

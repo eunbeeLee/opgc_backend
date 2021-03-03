@@ -22,7 +22,10 @@ class GithubUser(CustomBaseModel):
     )
 
     username = models.CharField(unique=True, max_length=200, null=False) # Github ID
-    profile_image = models.CharField(max_length=500, null=True)  # Github Profile Image URL
+    name = models.CharField(max_length=200, default='', blank=True)  # name
+    email = models.CharField(max_length=200, default='', blank=True)
+    location = models.CharField(max_length=200, default='', blank=True) # country
+    avatar_url = models.CharField(max_length=500, default='', blank=True)  # Github Profile Image URL
     total_contribution = models.IntegerField(verbose_name='contribution', default=0)
     total_stargazers_count = models.IntegerField(default=0)
     tier = models.SmallIntegerField(choices=GITHUB_RANK_CHOICES, default=UNRANK, blank=False)
@@ -33,6 +36,7 @@ class GithubUser(CustomBaseModel):
     followers = models.IntegerField(default=0, blank=True)
     following = models.IntegerField(default=0, blank=True)
     status = models.SmallIntegerField(choices=UPDATING_STATUS, default=NONE, blank=False)
+    continuous_commit_day = models.IntegerField(default=0) # 1일 1커밋 지속 날짜 카운트
 
 
 class Language(CustomBaseModel):

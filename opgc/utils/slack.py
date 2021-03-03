@@ -29,7 +29,7 @@ def slack_notify_new_user(user: GithubUser, join_type: str = 'Dirty Boyz'):
                     "short": True
                 }
             ],
-            "thumb_url": user.profile_image
+            "thumb_url": user.avatar_url
         }
     ]
 
@@ -110,6 +110,27 @@ def slack_update_ranking_system(status: str, message: str):
         {
             "color": "#36a64f",
             "title": f'🏆 랭킹 시스템 업데이트 {status}',
+            "fields": fields,
+        }
+    ]
+
+    if message:
+        attachments[0]['pretext'] = f'[{server}] {message}'
+
+    if channel:
+        slack = slackweb.Slack(url=channel)
+        slack.notify(attachments=attachments)
+
+
+def slack_update_1day_1commit(status: str, message: str):
+    channel = settings.SLACK_CHANNEL_CRONTAB
+    server = 'PROD' if settings.IS_PROD else 'LOCAL'
+    fields = []
+
+    attachments = [
+        {
+            "color": "#36a64f",
+            "title": f'👨‍💻 1일 1커밋 업데이트 {status}',
             "fields": fields,
         }
     ]
