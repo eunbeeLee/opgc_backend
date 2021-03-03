@@ -36,6 +36,7 @@ class GithubUser(CustomBaseModel):
     followers = models.IntegerField(default=0, blank=True)
     following = models.IntegerField(default=0, blank=True)
     status = models.SmallIntegerField(choices=UPDATING_STATUS, default=NONE, blank=False)
+    continuous_commit_day = models.IntegerField(default=0) # 1일 1커밋 지속 날짜 카운트
 
 
 class Language(CustomBaseModel):
