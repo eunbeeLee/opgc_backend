@@ -36,10 +36,12 @@ def run():
     slack_update_1day_1commit(status='시작🌱', message='')
 
     github_users = GithubUser.objects.all()
+    user_count = 0
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
         for github_user in chunkator(github_users, 1000):
             try:
                 executor.submit(check_1day_1commit, github_user.id, github_user.username)
+                user_count += 1
             except Exception as e:
                 # 멀티 프로세싱을 많이 안써봐서 어떤 예외가 나올지 몰라 리포팅
                 capture_exception(e)
@@ -47,5 +49,5 @@ def run():
     terminate_time = timeit.default_timer()  # 종료 시간 체크
     slack_update_1day_1commit(
         status='완료🌿',
-        message=f'1일 1커밋 카운트 업데이트가 {terminate_time - start_time}초 걸렸습니다.😎',
+        message=f'1일 1커밋 카운트 업데이트가 {terminate_time - start_time}초 걸렸습니다.😎 (총 {user_count}명)',
     )
