@@ -65,13 +65,13 @@ class GithubInformationService(object):
         except GithubUser.DoesNotExist:
             github_user = GithubUser.objects.create(
                 username=self.username,
-                name=user_information.get('name') or '',
-                email=user_information.get('email') or '',
-                location=user_information.get('location') or '',
-                avatar_url=user_information.get('avatar_url') or '',
-                company=user_information.get('company') or '',
-                bio=user_information.get('bio') or '',
-                blog=user_information.get('blog') or '',
+                name=user_information.get('name'),
+                email=user_information.get('email'),
+                location=user_information.get('location'),
+                avatar_url=user_information.get('avatar_url'),
+                company=user_information.get('company'),
+                bio=user_information.get('bio'),
+                blog=user_information.get('blog'),
                 public_repos=user_information.get('public_repos'),
                 followers=user_information.get('followers'),
                 following=user_information.get('following')
@@ -291,7 +291,9 @@ class GithubInformationService(object):
             UserOrganization.objects.bulk_create(new_user_organization_list)
 
         if user_organizations:
-            UserOrganization.objects.filter(github_user_id=self.github_user.id, name__in=user_organizations).delete()
+            UserOrganization.objects.filter(
+                github_user_id=self.github_user.id, organization__name__in=user_organizations
+            ).delete()
 
     def update_or_create_language(self):
         """
