@@ -46,7 +46,7 @@ class GithubInformationService(object):
         elif res.status_code != 200:
             self.update_fail(res)
 
-        return json.loads(res.content.decode("UTF-8"))
+        return json.loads(res.content)
 
     def get_or_create_github_user(self, user_information: dict):
         try:
@@ -103,7 +103,7 @@ class GithubInformationService(object):
                     if res.status_code != 200:
                         self.update_fail(res)
 
-                    for contributor in json.loads(res.content.decode("UTF-8")):
+                    for contributor in json.loads(res.content):
                         # User 타입이고 contributor 가 본인인 경우
                         if contributor.get('type') == 'User' and contributor.get('login') == self.github_user.username:
                             contribution = contributor.get('contributions')
@@ -160,7 +160,12 @@ class GithubInformationService(object):
         if res.status_code != 200:
             self.update_fail(res)
 
-        for contributor in json.loads(res.content.decode("UTF-8")):
+        try:
+            contributors = json.loads(res.content)
+        except json.JSONDecodeError:
+            return contribution, new_repository
+
+        for contributor in contributors:
             # User 타입이고 contributor 가 본인인 경우
             if contributor.get('type') == 'User' and contributor.get('login') == self.github_user.username:
                 contribution = contributor.get('contributions', 0)
@@ -194,7 +199,11 @@ class GithubInformationService(object):
         if res.status_code != 200:
             self.update_fail(res)
 
-        languages_data = json.loads(res.content.decode("UTF-8"))
+        try:
+            languages_data = json.loads(res.content)
+        except json.JSONDecodeError:
+            return ''
+
         if languages_data:
             for _type, count in languages_data.items():
                 if not self.update_language_dict.get(_type):
@@ -219,7 +228,13 @@ class GithubInformationService(object):
         user_organizations = list(UserOrganization.objects.filter(
             github_user_id=self.github_user.id).values_list('organization__name', flat=True)
         )
-        for organization_data in json.loads(res.content.decode("UTF-8")):
+
+        try:
+            organizations = json.loads(res.content)
+        except json.JSONDecodeError:
+            return
+
+        for organization_data in organizations:
             try:
                 organization = Organization.objects.filter(
                     name=organization_data.get('login')
@@ -263,16 +278,20 @@ class GithubInformationService(object):
             if res.status_code != 200:
                 self.update_fail(res)
 
-            for repository in json.loads(res.content.decode("UTF-8")):
-                res = requests.get(repository.get('contributors_url'), headers=self.headers)
+            try:
+                for repository in json.loads(res.content):
+                    res = requests.get(repository.get('contributors_url'), headers=self.headers)
 
-                if res.status_code != 200:
-                    self.update_fail(res)
+                    if res.status_code != 200:
+                        self.update_fail(res)
 
-                for contributor in json.loads(res.content.decode("UTF-8")):
-                    if self.github_user.username == contributor.get('login'):
-                        self.repositories.append(repository)
-                        break
+                    for contributor in json.loads(res.content):
+                        if self.github_user.username == contributor.get('login'):
+                            self.repositories.append(repository)
+                            break
+
+            except json.JSONDecodeError:
+                return
 
         new_user_organization_list = []
         for organization_id in update_user_organization_list:
@@ -356,11 +375,15 @@ class GithubInformationService(object):
             참고: https://docs.gitlab.com/ee/user/admin_area/settings/user_and_ip_rate_limits.html#response-headers
         """
         # 왠만하면 100 이상 호출하는 경우가 있어서 100으로 지정
-        content = json.loads(res.content)
-        if content['rate']['remaining'] < CHECK_RATE_REMAIN:
-            if not self.is_30_min_script:
-                self.insert_queue()
-            raise RateLimit()
+        try:
+            content = json.loads(res.content)
+            if content['rate']['remaining'] < CHECK_RATE_REMAIN:
+                if not self.is_30_min_script:
+                    self.insert_queue()
+                raise RateLimit()
+
+        except json.JSONDecodeError:
+            return
 
     def insert_queue(self):
         # 큐에 저장해서 30분만다 실행되는 스크립트에서 업데이트
@@ -409,7 +432,10 @@ class GithubInformationService(object):
 
         # 2. User의 repository 정보를 가져온다
         repo_res = requests.get(user_information.get('repos_url'), headers=self.headers)
-        self.repositories = json.loads(repo_res.content.decode("UTF-8"))
+        try:
+            self.repositories = json.loads(repo_res.content)
+        except json.JSONDecodeError:
+            pass
 
         # 3. Organization 정보와 연관된 repository 업데이트
         self.update_organization(user_information.get('organizations_url'))
