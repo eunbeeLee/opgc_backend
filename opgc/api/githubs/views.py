@@ -68,7 +68,7 @@ class GithubUserViewSet(mixins.ListModelMixin,
             # 업데이트 한지 하루가 지나야지 재업데이트
             if github_user.updated + timedelta(1) >= datetime.now():
                 response_data = self.serializer_class(github_user).data
-                return Response(response_data, status=400)
+                return Response(response_data)
 
             github_information_service = GithubInformationService(username)
             user = github_information_service.update()

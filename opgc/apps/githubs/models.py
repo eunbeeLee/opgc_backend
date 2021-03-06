@@ -22,17 +22,21 @@ class GithubUser(CustomBaseModel):
     )
 
     username = models.CharField(unique=True, max_length=200, null=False) # Github ID
-    profile_image = models.CharField(max_length=500, null=True)  # Github Profile Image URL
+    name = models.CharField(max_length=200, default=None, null=True, blank=True)  # name
+    email = models.CharField(max_length=200, default=None, null=True, blank=True)
+    location = models.CharField(max_length=200, default=None, null=True, blank=True) # country
+    avatar_url = models.CharField(max_length=500, default=None, null=True, blank=True)  # Github Profile Image URL
     total_contribution = models.IntegerField(verbose_name='contribution', default=0)
     total_stargazers_count = models.IntegerField(default=0)
     tier = models.SmallIntegerField(choices=GITHUB_RANK_CHOICES, default=UNRANK, blank=False)
-    company = models.CharField(max_length=100, default='', blank=True)
-    bio = models.CharField(max_length=200, default='', blank=True) # 설명
-    blog = models.CharField(max_length=100, default='', blank=True)
+    company = models.CharField(max_length=100, default=None, null=True, blank=True)
+    bio = models.CharField(max_length=200, default=None, null=True, blank=True) # 설명
+    blog = models.CharField(max_length=100, default=None, null=True, blank=True)
     public_repos = models.IntegerField(default=0, blank=True)
     followers = models.IntegerField(default=0, blank=True)
     following = models.IntegerField(default=0, blank=True)
     status = models.SmallIntegerField(choices=UPDATING_STATUS, default=NONE, blank=False)
+    continuous_commit_day = models.IntegerField(default=0) # 1일 1커밋 지속 날짜 카운트
 
 
 class Language(CustomBaseModel):
