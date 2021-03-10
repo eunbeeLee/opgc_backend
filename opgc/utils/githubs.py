@@ -279,19 +279,24 @@ class GithubInformationService(object):
                 self.update_fail(res)
 
             try:
-                for repository in json.loads(res.content):
-                    res = requests.get(repository.get('contributors_url'), headers=self.headers)
-
-                    if res.status_code != 200:
-                        self.update_fail(res)
-
-                    for contributor in json.loads(res.content):
-                        if self.github_user.username == contributor.get('login'):
-                            self.repositories.append(repository)
-                            break
-
+                repositories = json.loads(res.content)
             except json.JSONDecodeError:
-                return
+                continue
+
+            for repository in repositories:
+                res = requests.get(repository.get('contributors_url'), headers=self.headers)
+
+                if res.status_code == 451:
+                    # 레포지토리 접근 오류('Repository access blocked') - 저작원에 따라 block 될 수 있음
+                    continue
+
+                if res.status_code != 200:
+                    self.update_fail(res)
+
+                for contributor in json.loads(res.content):
+                    if self.github_user.username == contributor.get('login'):
+                        self.repositories.append(repository)
+                        break
 
         new_user_organization_list = []
         for organization_id in update_user_organization_list:
@@ -406,7 +411,7 @@ class GithubInformationService(object):
         if response.status_code == 403:
             raise RateLimit()
         else:
-            capture_exception(Exception(f'{response.content}'))
+            raise Exception(f'{response.content}')
 
     def update_success(self):
         """
