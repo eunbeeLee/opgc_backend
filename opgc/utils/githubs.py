@@ -246,8 +246,8 @@ class GithubInformationService(object):
                         break
 
                 update_fields = []
-                if organization.description != organization_data.get('description', ''):
-                    organization.description = organization_data.get('description', '')
+                if organization.description != organization_data.get('description'):
+                    organization.description = organization_data.get('description')
                     update_fields.append('description')
 
                 if organization.logo != organization_data.get('avatar_url'):
