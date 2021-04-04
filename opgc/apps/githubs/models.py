@@ -59,7 +59,7 @@ class UserLanguage(CustomBaseModel):
 
 class Organization(CustomBaseModel):
     name = models.CharField(verbose_name='name', unique=True, max_length=100, blank=False)
-    description = models.CharField(verbose_name='description', max_length=500, blank=False)
+    description = models.CharField(verbose_name='description', max_length=500, blank=False, null=True, default=None)
     logo = models.CharField(max_length=500, null=True)
     github_users = models.ManyToManyField(GithubUser, through='UserOrganization', related_name='organization', blank=True)
 

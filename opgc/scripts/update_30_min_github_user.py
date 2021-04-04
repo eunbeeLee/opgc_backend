@@ -37,8 +37,10 @@ def run():
 
         except RateLimit:
             slack_notify_update_fail(
-                message=f'Rate Limit 로 인해 업데이트가 실패되었습니다. {update_user_count}명만 업데이트 되었습니다.'
+                message=f'Rate Limit 로 인해 업데이트가 실패되었습니다. {update_user_count}명만 업데이트 되었습니다.😭'
             )
+            # rate limit면 다른 유저들도 업데이드 못함
+            return
 
         except Exception as e:
             capture_exception(e)
