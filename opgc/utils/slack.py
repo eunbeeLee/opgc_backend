@@ -141,3 +141,31 @@ def slack_update_1day_1commit(status: str, message: str):
     if channel:
         slack = slackweb.Slack(url=channel)
         slack.notify(attachments=attachments)
+
+
+def slack_update_older_week_user(status: str, message: str, update_user=None):
+    channel = settings.SLACK_CHANNEL_CRONTAB
+    server = 'PROD' if settings.IS_PROD else 'LOCAL'
+    fields = []
+
+    if update_user:
+        fields.append({
+            "title": "총 업데이트 유저",
+            "value": f'{update_user} 명',
+            "short": True
+        })
+
+    attachments = [
+        {
+            "color": "#36a64f",
+            "title": f'🥕 업데이트 된지 7일이 지난 유저 업데이트 {status}',
+            "fields": fields,
+        }
+    ]
+
+    if message:
+        attachments[0]['pretext'] = f'[{server}] {message}'
+
+    if channel:
+        slack = slackweb.Slack(url=channel)
+        slack.notify(attachments=attachments)
