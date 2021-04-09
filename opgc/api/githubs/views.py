@@ -2,7 +2,6 @@ from datetime import timedelta, datetime
 
 from rest_framework import viewsets, mixins, exceptions
 from rest_framework.response import Response
-from sentry_sdk import capture_exception
 
 from api.exceptions import NotExistsGithubUser, RateLimitGithubAPI
 from api.githubs.serializers import GithubUserSerializer, OrganizationSerializer, RepositorySerializer, \
@@ -52,15 +51,11 @@ class GithubUserViewSet(mixins.ListModelMixin,
             except RateLimit:
                 raise RateLimitGithubAPI()
 
-            except Exception as e:
-                capture_exception(e)
-
         serializer = self.serializer_class(github_user)
         return Response(serializer.data)
 
     def update(self, request, *args, **kwargs):
         username = self.kwargs.get(self.lookup_url_kwarg)
-        response_data = {}
 
         try:
             github_user = GithubUser.objects.filter(username=username).get()
@@ -79,9 +74,6 @@ class GithubUserViewSet(mixins.ListModelMixin,
 
         except RateLimit:
             raise RateLimitGithubAPI()
-
-        except Exception as e:
-            capture_exception(e)
 
         return Response(response_data)
 
