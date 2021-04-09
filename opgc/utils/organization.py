@@ -7,6 +7,7 @@ import requests
 from django.conf import settings
 
 from apps.githubs.models import GithubUser, UserOrganization, Organization
+from utils.exceptions import manage_api_call_fail
 from utils.repository import RepositoryDto, RepositoryService
 
 
@@ -45,8 +46,7 @@ class OrganizationService(object):
 
         res = requests.get(organization_url, headers=settings.GITHUB_API_HEADER)
         if res.status_code != 200:
-            return
-            # self.update_fail(res)
+            manage_api_call_fail(self.github_user, res.status_code)
 
         update_user_organization_list = []
         user_organizations = list(UserOrganization.objects.filter(
@@ -95,8 +95,7 @@ class OrganizationService(object):
             # organization 에 있는 repository 중 User 가 Contributor 인 repository 를 등록한다.
             res = requests.get(organization_dto.repos_url, headers=settings.GITHUB_API_HEADER)
             if res.status_code != 200:
-                return
-                # self.update_fail(res)
+                manage_api_call_fail(self.github_user, res.status_code)
 
             try:
                 repositories = []

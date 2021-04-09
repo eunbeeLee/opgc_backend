@@ -7,11 +7,10 @@ from furl import furl
 from sentry_sdk import capture_exception
 
 from apps.githubs.models import GithubUser
-from apps.reservations.models import UpdateUserQueue
-from utils.exceptions import GitHubUserDoesNotExist, RateLimit
+from utils.exceptions import GitHubUserDoesNotExist, RateLimit, manage_api_call_fail, insert_queue
 from utils.organization import OrganizationService
 from utils.repository import RepositoryService
-from utils.slack import slack_notify_new_user, slack_notify_update_user_queue
+from utils.slack import slack_notify_new_user
 
 FURL = furl('https://api.github.com/')
 GITHUB_RATE_LIMIT_URL = 'https://api.github.com/rate_limit'
@@ -43,7 +42,7 @@ class GithubInformationService(object):
         if res.status_code == 404:
             raise GitHubUserDoesNotExist()
         elif res.status_code != 200:
-            self.update_fail(res)
+            manage_api_call_fail(self.github_user, res.status_code)
 
         return json.loads(res.content)
 
@@ -87,7 +86,7 @@ class GithubInformationService(object):
             # 이 경우는 rate_limit api 가 호출이 안되는건데,
             # 이런경우가 깃헙장애 or rate_limit 호출에 제한이 있는지 모르겟다.
             if not self.is_30_min_script:
-                self.insert_queue()
+                insert_queue(self.github_user.username)
             capture_exception(Exception("Can't get RATE LIMIT."))
 
         """
@@ -98,34 +97,11 @@ class GithubInformationService(object):
             content = json.loads(res.content)
             if content['rate']['remaining'] < CHECK_RATE_REMAIN:
                 if not self.is_30_min_script:
-                    self.insert_queue()
+                    insert_queue(self.github_user.username)
                 raise RateLimit()
 
         except json.JSONDecodeError:
             return
-
-    def insert_queue(self):
-        # 큐에 저장해서 30분만다 실행되는 스크립트에서 업데이트
-        if not UpdateUserQueue.objects.filter(username=self.username).exists():
-            UpdateUserQueue.objects.create(
-                username=self.username,
-                status=UpdateUserQueue.READY
-            )
-            slack_notify_update_user_queue(self.username)
-
-    def update_fail(self, response):
-        """
-            업데이트 실패 처리
-        """
-        if self.github_user:
-            self.github_user.status = GithubUser.FAIL
-            self.github_user.save(update_fields=['status'])
-            self.insert_queue()
-
-        if response.status_code == 403:
-            raise RateLimit()
-        else:
-            raise Exception(f'{response.content}')
 
     def update_success(self, total_contribution: int, total_stargazers_count: int):
         """
@@ -151,11 +127,11 @@ class GithubInformationService(object):
 
         # 2. User의 repository 정보를 가져온다
         repo_res = requests.get(user_information.get('repos_url'), headers=settings.GITHUB_API_HEADER)
-        repository_service = RepositoryService(github_user=self.github_user)
+        repo_service = RepositoryService(github_user=self.github_user)
         try:
             for repository_data in json.loads(repo_res.content):
-                repository_dto = repository_service.create_dto(repository_data)
-                repository_service.repositories.append(repository_dto)
+                repository_dto = repo_service.create_dto(repository_data)
+                repo_service.repositories.append(repository_dto)
 
         except json.JSONDecodeError:
             pass
@@ -165,12 +141,12 @@ class GithubInformationService(object):
         org_service.update_organization(user_information.get('organizations_url'))
 
         # 4. Repository 정보 업데이트
-        repository_service.update_repositories()
+        repo_service.update_repositories()
 
         # 5. Language and UserLanguage 업데이트
-        repository_service.update_or_create_language()
+        repo_service.update_or_create_language()
 
         return self.update_success(
-            total_contribution=repository_service.total_contribution,
-            total_stargazers_count=repository_service.total_stargazers_count
+            total_contribution=repo_service.total_contribution,
+            total_stargazers_count=repo_service.total_stargazers_count
         )

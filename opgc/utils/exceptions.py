@@ -1,3 +1,6 @@
+from apps.githubs.models import GithubUser
+from apps.reservations.models import UpdateUserQueue
+from utils.slack import slack_notify_update_user_queue
 
 
 class GitHubUserDoesNotExist(Exception):
@@ -8,3 +11,23 @@ class GitHubUserDoesNotExist(Exception):
 class RateLimit(Exception):
     def __str__(self):
         return "github api rate limited."
+
+
+def manage_api_call_fail(github_user: GithubUser, status_code: int):
+    if github_user:
+        github_user.status = GithubUser.FAIL
+        github_user.save(update_fields=['status'])
+        insert_queue(github_user.username)
+
+    if status_code == 403:
+        raise RateLimit()
+
+
+def insert_queue(username: str):
+    # 큐에 저장해서 30분만다 실행되는 스크립트에서 업데이트
+    if not UpdateUserQueue.objects.filter(username=username).exists():
+        UpdateUserQueue.objects.create(
+            username=username,
+            status=UpdateUserQueue.READY
+        )
+        slack_notify_update_user_queue(username)

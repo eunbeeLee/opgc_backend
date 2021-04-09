@@ -7,6 +7,7 @@ import requests
 from django.conf import settings
 
 from apps.githubs.models import GithubUser, Repository, Language, UserLanguage
+from utils.exceptions import manage_api_call_fail
 
 
 @dataclass
@@ -89,8 +90,7 @@ class RepositoryService(object):
         # User가 Repository의 contributor 인지 확인한다.
         res = requests.get(repository.contributors_url, headers=settings.GITHUB_API_HEADER)
         if res.status_code != 200:
-            return
-            # self.update_fail(res)
+            manage_api_call_fail(self.github_user, res.status_code)
 
         try:
             contributors = json.loads(res.content)
@@ -129,8 +129,7 @@ class RepositoryService(object):
 
         res = requests.get(languages_url, headers=settings.GITHUB_API_HEADER)
         if res.status_code != 200:
-            return ''
-            # self.update_fail(res)
+            manage_api_call_fail(self.github_user, res.status_code)
 
         try:
             languages_data = json.loads(res.content)
@@ -160,9 +159,7 @@ class RepositoryService(object):
         new_languages = set(self.update_language_dict.keys()) - exists_languages
 
         for language in new_languages:
-            new_language_list.append(
-                Language(type=language)
-            )
+            new_language_list.append(Language(type=language))
 
         if new_language_list:
             Language.objects.bulk_create(new_language_list)
