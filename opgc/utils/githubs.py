@@ -1,6 +1,8 @@
+import asyncio
 import json
 from datetime import datetime
 
+import aiohttp
 import requests
 from django.conf import settings
 from furl import furl
@@ -88,52 +90,11 @@ class GithubInformationService(object):
 
         # 유저의 현재 모든 repository를 가져온다.
         user_repositories = list(Repository.objects.filter(github_user=self.github_user))
-        for repository in self.repositories:
-            is_exist_repo = False
-
-            for idx, repo in enumerate(user_repositories):
-                if repo.full_name == repository.get('full_name') and repo.owner == repository.get('owner').get('login'):
-                    is_exist_repo = True
-                    user_repositories.pop(idx)
-                    update_fields = []
-                    contribution = 0
-
-                    # User가 Repository의 contributor 인지 확인한다.
-                    res = requests.get(repository.get('contributors_url'), headers=self.headers)
-                    if res.status_code != 200:
-                        self.update_fail(res)
-
-                    for contributor in json.loads(res.content):
-                        # User 타입이고 contributor 가 본인인 경우
-                        if contributor.get('type') == 'User' and contributor.get('login') == self.github_user.username:
-                            contribution = contributor.get('contributions')
-                            break
-
-                    # repository update
-                    if repo.contribution != contribution:
-                        repo.contribution = contribution
-                        update_fields.append('contribution')
-
-                    # repository update
-                    if repo.stargazers_count != repository.get('stargazers_count'):
-                        repo.stargazers_count = repository.get('stargazers_count')
-                        update_fields.append('stargazers_count')
-
-                    if update_fields:
-                        repo.save(update_fields=update_fields)
-
-                    self.total_stargazers_count += repository.get('stargazers_count')
-                    self.total_contribution += contribution
-                    break
-
-            # 새로운 레포지토리
-            if not is_exist_repo:
-                _contribution, new_repository = self.create_repository(repository)
-
-                if new_repository:
-                    new_repository_list.append(new_repository)
-
-                self.total_contribution += _contribution
+        # loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(self.update_repository_futures(
+            self.repositories, user_repositories, new_repository_list))
 
         if new_repository_list:
             Repository.objects.bulk_create(new_repository_list)
@@ -283,20 +244,9 @@ class GithubInformationService(object):
             except json.JSONDecodeError:
                 continue
 
-            for repository in repositories:
-                res = requests.get(repository.get('contributors_url'), headers=self.headers)
-
-                if res.status_code == 451:
-                    # 레포지토리 접근 오류('Repository access blocked') - 저작원에 따라 block 될 수 있음
-                    continue
-
-                if res.status_code != 200:
-                    self.update_fail(res)
-
-                for contributor in json.loads(res.content):
-                    if self.github_user.username == contributor.get('login'):
-                        self.repositories.append(repository)
-                        break
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(self.save_organization_repository_futures(repositories))
 
         new_user_organization_list = []
         for organization_id in update_user_organization_list:
@@ -452,3 +402,77 @@ class GithubInformationService(object):
         self.update_or_create_language()
 
         return self.update_success()
+
+    async def update_repository(self, repository, user_repositories, new_repository_list):  # 코루틴 정의
+        is_exist_repo = False
+
+        for idx, repo in enumerate(user_repositories):
+            if repo.full_name == repository.get('full_name') and repo.owner == repository.get('owner').get('login'):
+                is_exist_repo = True
+                user_repositories.pop(idx)
+                update_fields = []
+                contribution = 0
+
+                # User가 Repository의 contributor 인지 확인한다.
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(repository.get('contributors_url'), headers=self.headers) as res:
+                        response_data = await res.text()
+                        response_status = res.status
+
+                if response_status == 200:
+                    for contributor in json.loads(response_data):
+                        # User 타입이고 contributor 가 본인인 경우
+                        if contributor.get('type') == 'User' and contributor.get('login') == self.github_user.username:
+                            contribution = contributor.get('contributions')
+
+                # repository update
+                if repo.contribution != contribution:
+                    repo.contribution = contribution
+                    update_fields.append('contribution')
+
+                # repository update
+                if repo.stargazers_count != repository.get('stargazers_count'):
+                    repo.stargazers_count = repository.get('stargazers_count')
+                    update_fields.append('stargazers_count')
+
+                if update_fields:
+                    repo.save(update_fields=update_fields)
+
+                self.total_stargazers_count += repository.get('stargazers_count')
+                self.total_contribution += contribution
+                break
+
+        # 새로운 레포지토리
+        if not is_exist_repo:
+            _contribution, new_repository = self.create_repository(repository)
+
+            if new_repository:
+                new_repository_list.append(new_repository)
+
+            self.total_contribution += _contribution
+
+    async def update_repository_futures(self, repositories, user_repositories, new_repository_list):
+        futures = [asyncio.ensure_future(
+            self.update_repository(repository, user_repositories, new_repository_list)) for repository in repositories
+        ]
+
+        await asyncio.gather(*futures)
+
+    async def append_organization_repository(self, repository):  # 코루틴 정의
+        async with aiohttp.ClientSession() as session:
+            async with session.get(repository.get('contributors_url'), headers=self.headers) as res:
+                response_text = await res.text()
+
+                if res.status == 200:
+                    # 451은 레포지토리 접근 오류('Repository access blocked') - 저작원에 따라 block 될 수 있음
+                    for contributor in json.loads(response_text):
+                        if self.github_user.username == contributor.get('login'):
+                            self.repositories.append(repository)
+                            break
+
+    async def save_organization_repository_futures(self, repositories):
+        futures = [asyncio.ensure_future(
+            self.append_organization_repository(repository)) for repository in repositories
+        ]
+
+        await asyncio.gather(*futures)
