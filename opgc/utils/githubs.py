@@ -1,17 +1,16 @@
-import asyncio
 import json
 from datetime import datetime
 
-import aiohttp
 import requests
 from django.conf import settings
 from furl import furl
 from sentry_sdk import capture_exception
 
-from apps.githubs.models import GithubUser, Repository, Language, UserOrganization, Organization, UserLanguage
+from apps.githubs.models import GithubUser
 from apps.reservations.models import UpdateUserQueue
 from utils.exceptions import GitHubUserDoesNotExist, RateLimit
-from utils.githubs_dto import RepositoryDto, OrganizationDto
+from utils.organization import OrganizationService
+from utils.repository import RepositoryService
 from utils.slack import slack_notify_new_user, slack_notify_update_user_queue
 
 FURL = furl('https://api.github.com/')
@@ -29,11 +28,7 @@ class GithubInformationService(object):
     github_user = None
 
     def __init__(self, username, is_30_min_script=False):
-        self.headers = {'Authorization': f'token {settings.OPGC_TOKEN}'}
-        self.total_contribution = 0
-        self.total_stargazers_count = 0
         self.username = username
-        self.repositories = [] # 업데이트할 레포지토리 리스트
         self.new_repository_list = [] # 새로 생성될 레포지토리 리스트
         self.update_language_dict = {} # 업데이트할 language
         self.is_30_min_script = is_30_min_script
@@ -43,7 +38,7 @@ class GithubInformationService(object):
             Github User 정보를 가져오거나 생성하는 함수
         """
         user_api = FURL.set(path=f'/users/{self.username}').url
-        res = requests.get(user_api, headers=self.headers)
+        res = requests.get(user_api, headers=settings.GITHUB_API_HEADER)
 
         if res.status_code == 404:
             raise GitHubUserDoesNotExist()
@@ -84,254 +79,9 @@ class GithubInformationService(object):
 
         return github_user
 
-    def update_repositories(self) -> bool:
-        """
-            레포지토리 업데이트 함수
-        """
-        # 유저의 현재 모든 repository를 가져온다.
-        user_repositories = list(Repository.objects.filter(github_user=self.github_user))
-
-        # loop = asyncio.get_event_loop()
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(self.update_repository_futures(self.repositories, user_repositories))
-
-        if self.new_repository_list:
-            Repository.objects.bulk_create(self.new_repository_list)
-
-        # 남아 있는 user_repository는 삭제된 repository라 DB에서도 삭제 해준다.
-        repo_ids = []
-        for repo in user_repositories:
-            repo_ids.append(repo.id)
-
-        if repo_ids:
-            Repository.objects.filter(id__in=repo_ids).delete()
-
-        return True
-
-    def create_repository(self, repository: RepositoryDto):
-        contribution = 0
-        new_repository = None
-
-        if repository.fork is True:
-            return 0, None
-
-        # User가 Repository의 contributor 인지 확인한다.
-        res = requests.get(repository.contributors_url, headers=self.headers)
-        if res.status_code != 200:
-            self.update_fail(res)
-
-        try:
-            contributors = json.loads(res.content)
-        except json.JSONDecodeError:
-            return contribution, new_repository
-
-        for contributor in contributors:
-            # User 타입이고 contributor 가 본인인 경우
-            if contributor.get('type') == 'User' and contributor.get('login') == self.github_user.username:
-                contribution = contributor.get('contributions', 0)
-                languages = ''
-
-                if contribution > 0:
-                    languages = self.record_language(repository.languages_url)
-
-                new_repository = Repository(
-                    github_user=self.github_user,
-                    name=repository.name,
-                    full_name=repository.full_name,
-                    owner=repository.owner,
-                    contribution=contribution,
-                    stargazers_count=repository.stargazers_count,
-                    rep_language=repository.language,
-                    languages=languages
-                )
-                self.total_stargazers_count += repository.stargazers_count
-                break
-
-        return contribution, new_repository
-
-    def record_language(self, languages_url: str) -> str:
-        """
-            repository 에서 사용중인 언어를 찾아서 dictionary에 type과 count를 저장
-            - count : 해당 언어로 작성된 코드의 바이트 수.
-        """
-
-        res = requests.get(languages_url, headers=self.headers)
-        if res.status_code != 200:
-            self.update_fail(res)
-
-        try:
-            languages_data = json.loads(res.content)
-        except json.JSONDecodeError:
-            return ''
-
-        if languages_data:
-            for _type, count in languages_data.items():
-                if not self.update_language_dict.get(_type):
-                    self.update_language_dict[_type] = count
-                else:
-                    self.update_language_dict[_type] += count
-
-            return json.dumps(list(languages_data.keys()))
-
-        return ''
-
-    def update_organization(self, organization_url: str):
-        """
-            organization(소속) 업데이트 함
-        """
-
-        res = requests.get(organization_url, headers=self.headers)
-        if res.status_code != 200:
-            self.update_fail(res)
-
-        update_user_organization_list = []
-        user_organizations = list(UserOrganization.objects.filter(
-            github_user_id=self.github_user.id).values_list('organization__name', flat=True)
-        )
-
-        try:
-            organizations = []
-            for organizations in json.loads(res.content):
-                organizations.append(
-                    OrganizationDto(
-                        name=organizations.get('login'),
-                        description=organizations.get('description'),
-                        logo=organizations.get('avatar_url'),
-                        repos_url=organizations.get('repos_url')
-                    )
-                )
-        except json.JSONDecodeError:
-            return
-
-        for organization in organizations:
-            try:
-                update_fields = []
-                organization = Organization.objects.filter(name=organization.name).get()
-
-                for idx, org in enumerate(user_organizations):
-                    if organization.name == org:
-                        user_organizations.pop(idx)
-                        break
-
-                if organization.description != organization.description:
-                    organization.description = organization.description
-                    update_fields.append('description')
-
-                if organization.logo != organization.logo:
-                    organization.logo = organization.logo
-                    update_fields.append('logo')
-
-                if update_fields:
-                    organization.save(update_fields=update_fields)
-
-                update_user_organization_list.append(organization.id)
-
-            except Organization.DoesNotExist:
-                new_organization = Organization.objects.create(
-                    name=organization.name,
-                    logo=organization.logo,
-                    description=organization.description or '',
-                )
-                update_user_organization_list.append(new_organization.id)
-
-            # organization 에 있는 repository 중 User 가 Contributor 인 repository 를 등록한다.
-            res = requests.get(organization.repos_url, headers=self.headers)
-            if res.status_code != 200:
-                self.update_fail(res)
-
-            try:
-                repositories = []
-                for repository in json.loads(res.content):
-                    repositories.append(
-                        RepositoryDto(
-                            name=repository.get('name'),
-                            full_name=repository.get('full_name'),
-                            owner=repository.get('owner').get('login'),
-                            stargazers_count=repository.get('stargazers_count'),
-                            fork=repository.get('fork'),
-                            language=repository.get('language') or '',
-                            contributors_url=repository.get('contributors_url'),
-                            languages_url=repository.get('languages_url')
-                        )
-                    )
-            except json.JSONDecodeError:
-                continue
-
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            loop.run_until_complete(self.save_organization_repository_futures(repositories))
-
-        new_user_organization_list = []
-        for organization_id in update_user_organization_list:
-            if not UserOrganization.objects.filter(
-                    github_user_id=self.github_user.id,
-                    organization_id=organization_id
-            ).exists():
-                new_user_organization_list.append(
-                    UserOrganization(
-                        github_user_id=self.github_user.id,
-                        organization_id=organization_id
-                    )
-                )
-
-        if new_user_organization_list:
-            UserOrganization.objects.bulk_create(new_user_organization_list)
-
-        if user_organizations:
-            UserOrganization.objects.filter(
-                github_user_id=self.github_user.id, organization__name__in=user_organizations
-            ).delete()
-
-    def update_or_create_language(self):
-        """
-            새로 추가된 언어를 만들고 User가 사용하는 언어사용 count(byte 수)를 업데이트 해주는 함수
-        """
-
-        # DB에 없던 Language 생성
-        new_language_list = []
-        exists_languages = set(Language.objects.filter(
-            type__in=self.update_language_dict.keys()).values_list('type', flat=True))
-        new_languages = set(self.update_language_dict.keys()) - exists_languages
-
-        for language in new_languages:
-            new_language_list.append(
-                Language(type=language)
-            )
-
-        if new_language_list:
-            Language.objects.bulk_create(new_language_list)
-
-        # 가존에 있던 UserLanguage 업데이트
-        new_user_languages = []
-        user_language_qs = UserLanguage.objects.prefetch_related('language').filter(
-            github_user_id=self.github_user.id, language__type__in=self.update_language_dict.keys()
-        )
-        for user_language in user_language_qs:
-            if user_language.language.type in self.update_language_dict.keys():
-                count = self.update_language_dict.pop(user_language.language.type)
-
-                if user_language.number != count:
-                    user_language.number = count
-                    user_language.save(update_fields=['number'])
-
-        # 새로운 UserLanguage 생성
-        languages = Language.objects.filter(type__in=self.update_language_dict.keys())
-        for language in languages:
-            new_user_languages.append(
-                UserLanguage(
-                    github_user_id=self.github_user.id,
-                    language_id=language.id,
-                    number=self.update_language_dict.pop(language.type)
-                )
-            )
-
-        if new_user_languages:
-            UserLanguage.objects.bulk_create(new_user_languages)
-
     def check_rete_limit(self):
         # 현재 호출할 수 있는 rate 체크 (token 있는경우 1시간당 5000번 없으면 60번 호출)
-        res = requests.get(GITHUB_RATE_LIMIT_URL, headers=self.headers)
+        res = requests.get(GITHUB_RATE_LIMIT_URL, headers=settings.GITHUB_API_HEADER)
 
         if res.status_code != 200:
             # 이 경우는 rate_limit api 가 호출이 안되는건데,
@@ -377,14 +127,14 @@ class GithubInformationService(object):
         else:
             raise Exception(f'{response.content}')
 
-    def update_success(self):
+    def update_success(self, total_contribution: int, total_stargazers_count: int):
         """
             업데이트 성공 처리
         """
         self.github_user.status = GithubUser.COMPLETED
         self.github_user.updated = datetime.now()
-        self.github_user.total_contribution = self.total_contribution
-        self.github_user.total_stargazers_count = self.total_stargazers_count
+        self.github_user.total_contribution = total_contribution
+        self.github_user.total_stargazers_count = total_stargazers_count
         self.github_user.save(update_fields=['status', 'updated', 'total_contribution', 'total_stargazers_count'])
 
         return self.github_user
@@ -400,105 +150,27 @@ class GithubInformationService(object):
         self.github_user = self.get_or_create_github_user(user_information)
 
         # 2. User의 repository 정보를 가져온다
-        repo_res = requests.get(user_information.get('repos_url'), headers=self.headers)
+        repo_res = requests.get(user_information.get('repos_url'), headers=settings.GITHUB_API_HEADER)
+        repository_service = RepositoryService(github_user=self.github_user)
         try:
-            for repo in json.loads(repo_res.content):
-                self.repositories.append(
-                    RepositoryDto(
-                        name=repo.get('name'),
-                        full_name=repo.get('full_name'),
-                        owner=repo.get('owner').get('login'),
-                        stargazers_count=repo.get('stargazers_count'),
-                        fork=repo.get('fork'),
-                        language=repo.get('language') or '',
-                        contributors_url=repo.get('contributors_url'),
-                        languages_url=repo.get('languages_url')
-                    )
-                )
+            for repository_data in json.loads(repo_res.content):
+                repository_dto = repository_service.create_dto(repository_data)
+                repository_service.repositories.append(repository_dto)
+
         except json.JSONDecodeError:
             pass
 
         # 3. Organization 정보와 연관된 repository 업데이트
-        self.update_organization(user_information.get('organizations_url'))
+        org_service = OrganizationService(github_user=self.github_user)
+        org_service.update_organization(user_information.get('organizations_url'))
 
         # 4. Repository 정보 업데이트
-        self.update_repositories()
+        repository_service.update_repositories()
 
         # 5. Language and UserLanguage 업데이트
-        self.update_or_create_language()
+        repository_service.update_or_create_language()
 
-        return self.update_success()
-
-    async def update_repository(self, repository: RepositoryDto, user_repositories: list):  # 코루틴 정의
-        is_exist_repo = False
-
-        for idx, user_repo in enumerate(user_repositories):
-            if user_repo.full_name == repository.full_name and user_repo.owner == repository.owner:
-                is_exist_repo = True
-                user_repositories.pop(idx)
-                update_fields = []
-                contribution = 0
-
-                # User가 Repository의 contributor 인지 확인한다.
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(repository.contributors_url, headers=self.headers) as res:
-                        response_data = await res.text()
-                        response_status = res.status
-
-                if response_status == 200:
-                    for contributor in json.loads(response_data):
-                        # User 타입이고 contributor 가 본인인 경우
-                        if contributor.get('type') == 'User' and contributor.get('login') == self.github_user.username:
-                            contribution = contributor.get('contributions')
-
-                # repository update
-                if user_repo.contribution != contribution:
-                    user_repo.contribution = contribution
-                    update_fields.append('contribution')
-
-                # repository update
-                if user_repo.stargazers_count != repository.stargazers_count:
-                    user_repo.stargazers_count = repository.stargazers_count
-                    update_fields.append('stargazers_count')
-
-                if update_fields:
-                    user_repo.save(update_fields=update_fields)
-
-                self.total_stargazers_count += repository.stargazers_count
-                self.total_contribution += contribution
-                break
-
-        # 새로운 레포지토리
-        if not is_exist_repo:
-            _contribution, new_repository = self.create_repository(repository)
-
-            if new_repository:
-                self.new_repository_list.append(new_repository)
-
-            self.total_contribution += _contribution
-
-    async def update_repository_futures(self, repositories, user_repositories: list):
-        futures = [asyncio.ensure_future(
-            self.update_repository(repository, user_repositories)) for repository in repositories
-        ]
-
-        await asyncio.gather(*futures)
-
-    async def append_organization_repository(self, repository: RepositoryDto):  # 코루틴 정의
-        async with aiohttp.ClientSession() as session:
-            async with session.get(repository.contributors_url, headers=self.headers) as res:
-                response_text = await res.text()
-
-                if res.status == 200:
-                    # 451은 레포지토리 접근 오류('Repository access blocked') - 저작원에 따라 block 될 수 있음
-                    for contributor in json.loads(response_text):
-                        if self.github_user.username == contributor.get('login'):
-                            self.repositories.append(repository)
-                            break
-
-    async def save_organization_repository_futures(self, repositories):
-        futures = [asyncio.ensure_future(
-            self.append_organization_repository(repository)) for repository in repositories
-        ]
-
-        await asyncio.gather(*futures)
+        return self.update_success(
+            total_contribution=repository_service.total_contribution,
+            total_stargazers_count=repository_service.total_stargazers_count
+        )
