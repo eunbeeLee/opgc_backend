@@ -11,6 +11,7 @@ from sentry_sdk import capture_exception
 from apps.githubs.models import GithubUser, Repository, Language, UserOrganization, Organization, UserLanguage
 from apps.reservations.models import UpdateUserQueue
 from utils.exceptions import GitHubUserDoesNotExist, RateLimit
+from utils.githubs_dto import RepositoryDto, OrganizationDto
 from utils.slack import slack_notify_new_user, slack_notify_update_user_queue
 
 FURL = furl('https://api.github.com/')
@@ -33,6 +34,7 @@ class GithubInformationService(object):
         self.total_stargazers_count = 0
         self.username = username
         self.repositories = [] # 업데이트할 레포지토리 리스트
+        self.new_repository_list = [] # 새로 생성될 레포지토리 리스트
         self.update_language_dict = {} # 업데이트할 language
         self.is_30_min_script = is_30_min_script
 
@@ -86,18 +88,16 @@ class GithubInformationService(object):
         """
             레포지토리 업데이트 함수
         """
-        new_repository_list = []
-
         # 유저의 현재 모든 repository를 가져온다.
         user_repositories = list(Repository.objects.filter(github_user=self.github_user))
+
         # loop = asyncio.get_event_loop()
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(self.update_repository_futures(
-            self.repositories, user_repositories, new_repository_list))
+        loop.run_until_complete(self.update_repository_futures(self.repositories, user_repositories))
 
-        if new_repository_list:
-            Repository.objects.bulk_create(new_repository_list)
+        if self.new_repository_list:
+            Repository.objects.bulk_create(self.new_repository_list)
 
         # 남아 있는 user_repository는 삭제된 repository라 DB에서도 삭제 해준다.
         repo_ids = []
@@ -109,15 +109,15 @@ class GithubInformationService(object):
 
         return True
 
-    def create_repository(self, repository: dict):
+    def create_repository(self, repository: RepositoryDto):
         contribution = 0
         new_repository = None
 
-        if repository.get('fork') is True:
+        if repository.fork is True:
             return 0, None
 
         # User가 Repository의 contributor 인지 확인한다.
-        res = requests.get(repository.get('contributors_url'), headers=self.headers)
+        res = requests.get(repository.contributors_url, headers=self.headers)
         if res.status_code != 200:
             self.update_fail(res)
 
@@ -133,19 +133,19 @@ class GithubInformationService(object):
                 languages = ''
 
                 if contribution > 0:
-                    languages = self.record_language(repository.get('languages_url'))
+                    languages = self.record_language(repository.languages_url)
 
                 new_repository = Repository(
                     github_user=self.github_user,
-                    name=repository.get('name'),
-                    full_name=repository.get('full_name'),
-                    owner=repository.get('owner')['login'],
+                    name=repository.name,
+                    full_name=repository.full_name,
+                    owner=repository.owner,
                     contribution=contribution,
-                    stargazers_count=repository.get('stargazers_count', 0),
-                    rep_language=repository.get('language') or '',
+                    stargazers_count=repository.stargazers_count,
+                    rep_language=repository.language,
                     languages=languages
                 )
-                self.total_stargazers_count += repository.get('stargazers_count')
+                self.total_stargazers_count += repository.stargazers_count
                 break
 
         return contribution, new_repository
@@ -191,28 +191,35 @@ class GithubInformationService(object):
         )
 
         try:
-            organizations = json.loads(res.content)
+            organizations = []
+            for organizations in json.loads(res.content):
+                organizations.append(
+                    OrganizationDto(
+                        name=organizations.get('login'),
+                        description=organizations.get('description'),
+                        logo=organizations.get('avatar_url'),
+                        repos_url=organizations.get('repos_url')
+                    )
+                )
         except json.JSONDecodeError:
             return
 
-        for organization_data in organizations:
+        for organization in organizations:
             try:
-                organization = Organization.objects.filter(
-                    name=organization_data.get('login')
-                ).get()
+                update_fields = []
+                organization = Organization.objects.filter(name=organization.name).get()
 
                 for idx, org in enumerate(user_organizations):
                     if organization.name == org:
                         user_organizations.pop(idx)
                         break
 
-                update_fields = []
-                if organization.description != organization_data.get('description'):
-                    organization.description = organization_data.get('description')
+                if organization.description != organization.description:
+                    organization.description = organization.description
                     update_fields.append('description')
 
-                if organization.logo != organization_data.get('avatar_url'):
-                    organization.logo = organization_data.get('avatar_url')
+                if organization.logo != organization.logo:
+                    organization.logo = organization.logo
                     update_fields.append('logo')
 
                 if update_fields:
@@ -221,26 +228,33 @@ class GithubInformationService(object):
                 update_user_organization_list.append(organization.id)
 
             except Organization.DoesNotExist:
-                description = organization_data.get('description')
-                name = organization_data.get('login')
-                logo = organization_data.get('avatar_url')
-
-                organization = Organization.objects.create(
-                    name=name,
-                    logo=logo,
-                    description=description if description else '',
+                new_organization = Organization.objects.create(
+                    name=organization.name,
+                    logo=organization.logo,
+                    description=organization.description or '',
                 )
-                update_user_organization_list.append(organization.id)
+                update_user_organization_list.append(new_organization.id)
 
-            ################################################################################
-            #    organization 에 있는 repository 중 User 가 Contributor 인 repository 를 등록한다.
-            ################################################################################
-            res = requests.get(organization_data.get('repos_url'), headers=self.headers)
+            # organization 에 있는 repository 중 User 가 Contributor 인 repository 를 등록한다.
+            res = requests.get(organization.repos_url, headers=self.headers)
             if res.status_code != 200:
                 self.update_fail(res)
 
             try:
-                repositories = json.loads(res.content)
+                repositories = []
+                for repository in json.loads(res.content):
+                    repositories.append(
+                        RepositoryDto(
+                            name=repository.get('name'),
+                            full_name=repository.get('full_name'),
+                            owner=repository.get('owner').get('login'),
+                            stargazers_count=repository.get('stargazers_count'),
+                            fork=repository.get('fork'),
+                            language=repository.get('language') or '',
+                            contributors_url=repository.get('contributors_url'),
+                            languages_url=repository.get('languages_url')
+                        )
+                    )
             except json.JSONDecodeError:
                 continue
 
@@ -388,7 +402,19 @@ class GithubInformationService(object):
         # 2. User의 repository 정보를 가져온다
         repo_res = requests.get(user_information.get('repos_url'), headers=self.headers)
         try:
-            self.repositories = json.loads(repo_res.content)
+            for repo in json.loads(repo_res.content):
+                self.repositories.append(
+                    RepositoryDto(
+                        name=repo.get('name'),
+                        full_name=repo.get('full_name'),
+                        owner=repo.get('owner').get('login'),
+                        stargazers_count=repo.get('stargazers_count'),
+                        fork=repo.get('fork'),
+                        language=repo.get('language') or '',
+                        contributors_url=repo.get('contributors_url'),
+                        languages_url=repo.get('languages_url')
+                    )
+                )
         except json.JSONDecodeError:
             pass
 
@@ -403,11 +429,11 @@ class GithubInformationService(object):
 
         return self.update_success()
 
-    async def update_repository(self, repository, user_repositories, new_repository_list):  # 코루틴 정의
+    async def update_repository(self, repository: RepositoryDto, user_repositories: list):  # 코루틴 정의
         is_exist_repo = False
 
-        for idx, repo in enumerate(user_repositories):
-            if repo.full_name == repository.get('full_name') and repo.owner == repository.get('owner').get('login'):
+        for idx, user_repo in enumerate(user_repositories):
+            if user_repo.full_name == repository.full_name and user_repo.owner == repository.owner:
                 is_exist_repo = True
                 user_repositories.pop(idx)
                 update_fields = []
@@ -415,7 +441,7 @@ class GithubInformationService(object):
 
                 # User가 Repository의 contributor 인지 확인한다.
                 async with aiohttp.ClientSession() as session:
-                    async with session.get(repository.get('contributors_url'), headers=self.headers) as res:
+                    async with session.get(repository.contributors_url, headers=self.headers) as res:
                         response_data = await res.text()
                         response_status = res.status
 
@@ -426,19 +452,19 @@ class GithubInformationService(object):
                             contribution = contributor.get('contributions')
 
                 # repository update
-                if repo.contribution != contribution:
-                    repo.contribution = contribution
+                if user_repo.contribution != contribution:
+                    user_repo.contribution = contribution
                     update_fields.append('contribution')
 
                 # repository update
-                if repo.stargazers_count != repository.get('stargazers_count'):
-                    repo.stargazers_count = repository.get('stargazers_count')
+                if user_repo.stargazers_count != repository.stargazers_count:
+                    user_repo.stargazers_count = repository.stargazers_count
                     update_fields.append('stargazers_count')
 
                 if update_fields:
-                    repo.save(update_fields=update_fields)
+                    user_repo.save(update_fields=update_fields)
 
-                self.total_stargazers_count += repository.get('stargazers_count')
+                self.total_stargazers_count += repository.stargazers_count
                 self.total_contribution += contribution
                 break
 
@@ -447,20 +473,20 @@ class GithubInformationService(object):
             _contribution, new_repository = self.create_repository(repository)
 
             if new_repository:
-                new_repository_list.append(new_repository)
+                self.new_repository_list.append(new_repository)
 
             self.total_contribution += _contribution
 
-    async def update_repository_futures(self, repositories, user_repositories, new_repository_list):
+    async def update_repository_futures(self, repositories, user_repositories: list):
         futures = [asyncio.ensure_future(
-            self.update_repository(repository, user_repositories, new_repository_list)) for repository in repositories
+            self.update_repository(repository, user_repositories)) for repository in repositories
         ]
 
         await asyncio.gather(*futures)
 
-    async def append_organization_repository(self, repository):  # 코루틴 정의
+    async def append_organization_repository(self, repository: RepositoryDto):  # 코루틴 정의
         async with aiohttp.ClientSession() as session:
-            async with session.get(repository.get('contributors_url'), headers=self.headers) as res:
+            async with session.get(repository.contributors_url, headers=self.headers) as res:
                 response_text = await res.text()
 
                 if res.status == 200:
