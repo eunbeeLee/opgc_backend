@@ -228,7 +228,6 @@ class RepositoryService(object):
 
                 self.total_stargazers_count += repository.stargazers_count
                 self.total_contribution += contribution
-                print(f'repo: {repository.name} contribution: {contribution}')
                 break
 
         # 새로운 레포지토리
@@ -239,7 +238,6 @@ class RepositoryService(object):
                 self.new_repository_list.append(new_repository)
 
             self.total_contribution += _contribution
-            print(f'total_contribution: {self.total_contribution}')
 
     async def update_repository_futures(self, repositories, user_repositories: list):
         futures = [asyncio.ensure_future(
