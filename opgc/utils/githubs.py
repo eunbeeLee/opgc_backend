@@ -139,8 +139,10 @@ class GithubInformationService(object):
         # 3. Organization 정보와 연관된 repository 업데이트
         org_service = OrganizationService(github_user=self.github_user)
         org_service.update_organization(user_information.get('organizations_url'))
+        org_service.get_organization_repository()
 
         # 4. Repository 정보 업데이트
+        repo_service.repositories += org_service.repositories
         repo_service.update_repositories()
 
         # 5. Language and UserLanguage 업데이트
