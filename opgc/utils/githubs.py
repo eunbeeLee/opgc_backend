@@ -86,7 +86,7 @@ class GithubInformationService(object):
             # 이 경우는 rate_limit api 가 호출이 안되는건데,
             # 이런경우가 깃헙장애 or rate_limit 호출에 제한이 있는지 모르겟다.
             if not self.is_30_min_script:
-                insert_queue(self.github_user.username)
+                insert_queue(self.username)
             capture_exception(Exception("Can't get RATE LIMIT."))
 
         """
@@ -97,7 +97,7 @@ class GithubInformationService(object):
             content = json.loads(res.content)
             if content['rate']['remaining'] < CHECK_RATE_REMAIN:
                 if not self.is_30_min_script:
-                    insert_queue(self.github_user.username)
+                    insert_queue(self.username)
                 raise RateLimit()
 
         except json.JSONDecodeError:
