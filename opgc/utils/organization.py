@@ -20,9 +20,9 @@ class OrganizationDto:
 
     def __init__(self, name: str, description: str, logo: str, repos_url: str):
         self.name = name
-        self.description = description
-        self.logo = logo
-        self.repos_url = repos_url
+        self.description = description or ''
+        self.logo = logo or ''
+        self.repos_url = repos_url or ''
 
 
 class OrganizationService(object):
