@@ -10,7 +10,6 @@ def mock_slack_notify_new_user():
         yield patch
 
 
-@pytest.mark.urls(urls='conf.urls.api')
 @pytest.mark.django_db
 def test_get_or_create_github_user(github_context, mock_slack_notify_new_user):
     username = 'JAY-Chan9yu'
