@@ -24,6 +24,13 @@ def run():
     if not update_user_queue_qs:
         return
 
+    # 1. 스크립트를 시작하기전 rate_limit 를 체크한다.
+    try:
+        rate_limit_check_service = GithubInformationService(None)
+        rate_limit_check_service.check_rete_limit()
+    except RateLimit:
+        return
+
     slack_update_github_user(status='시작', message='')
     update_user_count = 0
     for user_queue in chunkator(update_user_queue_qs, 1000):

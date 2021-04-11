@@ -78,7 +78,7 @@ class GithubInformationService(object):
 
         return github_user
 
-    def check_rete_limit(self):
+    def check_rete_limit(self) -> int:
         # 현재 호출할 수 있는 rate 체크 (token 있는경우 1시간당 5000번 없으면 60번 호출)
         res = requests.get(GITHUB_RATE_LIMIT_URL, headers=settings.GITHUB_API_HEADER)
 
@@ -99,9 +99,10 @@ class GithubInformationService(object):
                 if not self.is_30_min_script:
                     insert_queue(self.username)
                 raise RateLimit()
-
         except json.JSONDecodeError:
-            return
+            return 0
+
+        return content['rate']['remaining']
 
     def update_success(self, total_contribution: int, total_stargazers_count: int):
         """

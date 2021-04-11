@@ -24,7 +24,7 @@ def run():
         return
 
     older_week_date = datetime.now() - timedelta(7)
-    github_user_qs = GithubUser.objects.filter(updated__lte=older_week_date)
+    github_user_qs = GithubUser.objects.filter(updated__lte=older_week_date, id__lte=10)
     if not github_user_qs:
         return
 
@@ -32,7 +32,8 @@ def run():
     slack_update_older_week_user(status='시작', message='')
 
     update_user_count = 0
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        # max_worker default = min(32, os.cpu_count() + 4)
         for github_user in chunkator(github_user_qs, 1000):
             try:
                 github_information_service = GithubInformationService(github_user.username)
@@ -49,9 +50,10 @@ def run():
             except Exception as e:
                 capture_exception(e)
 
+    remaining = rate_limit_check_service.check_rete_limit()
     terminate_time = timeit.default_timer()  # 종료 시간 체크
     slack_update_older_week_user(
         status='완료',
-        message=f'업데이트가 {terminate_time - start_time}초 걸렸습니다. 🤩',
+        message=f'업데이트가 {terminate_time - start_time}초 걸렸습니다. 🤩 API 호출 남은 횟수 : {remaining}',
         update_user=update_user_count
     )
