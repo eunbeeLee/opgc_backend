@@ -146,7 +146,7 @@ class OrganizationService(object):
                 response_text = await res.text()
 
                 if res.status == 200:
-                    # 451은 레포지토리 접근 오류('Repository access blocked') - 저작원에 따라 block 될 수 있음
+                    # 451은 레포지토리 접근 오류('Repository access blocked') - 저작권에 따라 block 될 수 있음
                     for contributor in json.loads(response_text):
                         if self.github_user.username == contributor.get('login'):
                             self.repositories.append(repository)

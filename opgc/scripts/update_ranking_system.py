@@ -22,7 +22,7 @@ rank_type_model = {
 
 class RankService(object):
     # todo: 현재는 데이터가 별로 없어서 order by를 했는데, 더 좋은 아이디어가 있는지 확인 필요!
-    # todo: 동정자 처리 어떻게 할지 고민해봐야함!   
+    # todo: 동점자 처리 어떻게 할지 고민해봐야함!
 
     def create_new_rank(self, _type: str):
         """
@@ -34,14 +34,7 @@ class RankService(object):
 
         new_ranks = []
         for idx in range(1, 11):
-            new_ranks.append(
-                UserRank(
-                    type=_type,
-                    ranking=idx,
-                    score=0,
-                    github_user=None
-                )
-            )
+            new_ranks.append(UserRank(type=_type, ranking=idx, score=0, github_user=None))
 
         UserRank.objects.bulk_create(new_ranks)
 
@@ -65,13 +58,7 @@ class RankService(object):
             # 최대 10개라 all()로 그냥 가져옴 todo: user가 많아지면 100개로 늘릴예정
             order = 1
             for _id, score in github_user_data:
-                UserRank.objects.filter(
-                    type=_type, ranking=order
-                ).update(
-                    github_user_id=_id,
-                    score=score
-                )
-
+                UserRank.objects.filter(type=_type, ranking=order).update(github_user_id=_id, score=score)
                 order += 1
 
     @staticmethod

@@ -7,7 +7,6 @@ import timeit
 from datetime import datetime, timedelta
 
 from chunkator import chunkator
-from sentry_sdk import capture_exception
 
 from apps.githubs.models import GithubUser
 from utils.exceptions import RateLimit, insert_queue
