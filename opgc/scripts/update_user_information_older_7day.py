@@ -24,7 +24,7 @@ def run():
         return
 
     older_week_date = datetime.now() - timedelta(7)
-    github_user_qs = GithubUser.objects.filter(updated__lte=older_week_date, id__lte=10)
+    github_user_qs = GithubUser.objects.filter(updated__lte=older_week_date)
     if not github_user_qs:
         return
 
