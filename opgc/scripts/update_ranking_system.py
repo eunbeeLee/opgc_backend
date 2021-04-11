@@ -51,15 +51,14 @@ class RankService(object):
         if rank is None:
             return
 
-        github_user_data = GithubUser.objects.values_list('id', _type).order_by(f'-{_type}')[:10]
+        github_user_data = GithubUser.objects.values('id', _type).order_by(f'-{_type}')[:10]
 
         # 랭킹 업데이트 도중 하나라도 오류가 나면 원상복구
         with transaction.atomic():
             # 최대 10개라 all()로 그냥 가져옴 todo: user가 많아지면 100개로 늘릴예정
-            order = 1
-            for _id, score in github_user_data:
-                UserRank.objects.filter(type=_type, ranking=order).update(github_user_id=_id, score=score)
-                order += 1
+            for order, data in enumerate(github_user_data):
+                UserRank.objects.filter(type=_type, ranking=order+1).update(
+                    github_user_id=data.get('id'), score=data.get(_type))
 
     @staticmethod
     def update_language_rank():
@@ -74,16 +73,13 @@ class RankService(object):
 
             # 랭킹 업데이트 도중 하나라도 오류가 나면 원상복구
             with transaction.atomic():
-                order = 1
-                for user_language in user_languages:
+                for order, user_language in enumerate(user_languages):
                     UserRank.objects.filter(
-                        type=f'lang-{language.type}', ranking=order
+                        type=f'lang-{language.type}', ranking=order+1
                     ).update(
                         github_user_id=user_language.github_user_id,
                         score=user_language.number
                     )
-
-                    order += 1
 
 
 def run():
