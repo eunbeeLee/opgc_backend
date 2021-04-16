@@ -212,6 +212,8 @@ class RepositoryService(object):
                         # User 타입이고 contributor 가 본인인 경우
                         if contributor.get('type') == 'User' and contributor.get('login') == self.github_user.username:
                             contribution = contributor.get('contributions')
+                            # languages number update
+                            self.record_language(repository.languages_url)
 
                 # repository update
                 if user_repo.contribution != contribution:
