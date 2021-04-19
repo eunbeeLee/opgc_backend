@@ -12,8 +12,7 @@ from utils.exceptions import GitHubUserDoesNotExist, RateLimit
 from utils.githubs import GithubInformationService
 
 
-class GithubUserViewSet(mixins.ListModelMixin,
-                        mixins.UpdateModelMixin,
+class GithubUserViewSet(mixins.UpdateModelMixin,
                         mixins.RetrieveModelMixin,
                         viewsets.GenericViewSet):
     """
@@ -26,19 +25,9 @@ class GithubUserViewSet(mixins.ListModelMixin,
     serializer_class = GithubUserSerializer
     lookup_url_kwarg = 'username'
 
-    def get_queryset(self):
+    def retrieve(self, request, *args, **kwargs):
         username = self.kwargs.get(self.lookup_url_kwarg)
-
-        try:
-            github_user = GithubUser.objects.filter(username=username).get()
-        except GithubUser.DoesNotExist:
-            return None
-
-        return github_user
-
-    def list(self, request, *args, **kwargs):
-        username = self.kwargs.get(self.lookup_url_kwarg)
-        github_user = self.get_queryset()
+        github_user = self.get_queryset().filter(username=username).first()
 
         if github_user is None:
             try:

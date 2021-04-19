@@ -20,16 +20,17 @@ class OrganizationDto:
 
     def __init__(self, name: str, description: str, logo: str, repos_url: str):
         self.name = name
-        self.description = description
-        self.logo = logo
-        self.repos_url = repos_url
+        self.description = description or ''
+        self.logo = logo or ''
+        self.repos_url = repos_url or ''
 
 
 class OrganizationService(object):
 
     def __init__(self, github_user: GithubUser):
         self.github_user = github_user
-        self.repositories = []
+        self.new_repositories = [] # 업데이트 해야할 레포지토리
+        self.repositories = [] # 실제 유저의 레포지토리
 
     def create_dto(self, organization_data: dict) -> OrganizationDto:
         return OrganizationDto(
@@ -108,9 +109,7 @@ class OrganizationService(object):
             except json.JSONDecodeError:
                 continue
 
-            org_service = OrganizationService(github_user=self.github_user)
-            org_service.get_organization_repository(repositories)
-            self.repositories += org_service.repositories
+            self.new_repositories += repositories
 
         new_user_organization_list = []
         for organization_id in update_user_organization_list:
@@ -133,13 +132,13 @@ class OrganizationService(object):
                 github_user_id=self.github_user.id, organization__name__in=user_organizations
             ).delete()
 
-    def get_organization_repository(self, repositories: list):
+    def get_organization_repository(self):
         """
             organization 에 저장되어있는 repository 정보를 가져온다
         """
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(self.save_organization_repository_futures(repositories))
+        loop.run_until_complete(self.save_organization_repository_futures(self.new_repositories))
 
     async def append_organization_repository(self, repository: RepositoryDto):  # 코루틴 정의
         async with aiohttp.ClientSession() as session:
@@ -147,7 +146,7 @@ class OrganizationService(object):
                 response_text = await res.text()
 
                 if res.status == 200:
-                    # 451은 레포지토리 접근 오류('Repository access blocked') - 저작원에 따라 block 될 수 있음
+                    # 451은 레포지토리 접근 오류('Repository access blocked') - 저작권에 따라 block 될 수 있음
                     for contributor in json.loads(response_text):
                         if self.github_user.username == contributor.get('login'):
                             self.repositories.append(repository)

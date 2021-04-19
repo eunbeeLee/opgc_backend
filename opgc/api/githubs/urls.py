@@ -5,7 +5,7 @@ from api.githubs.views import GithubUserViewSet, OrganizationViewSet, Repository
 app_name = 'githubs'
 
 github_user_list = GithubUserViewSet.as_view({
-    'get': 'list',
+    'get': 'retrieve',
     'patch': 'update'
 })
 

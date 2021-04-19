@@ -7,10 +7,9 @@ import timeit
 from datetime import datetime, timedelta
 
 from chunkator import chunkator
-from sentry_sdk import capture_exception
 
 from apps.githubs.models import GithubUser
-from utils.exceptions import RateLimit
+from utils.exceptions import RateLimit, insert_queue
 from utils.githubs import GithubInformationService
 from utils.slack import slack_notify_update_fail, slack_update_older_week_user
 
@@ -32,8 +31,14 @@ def run():
     slack_update_older_week_user(status='시작', message='')
 
     update_user_count = 0
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+    is_rate_limit = False
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        # max_worker default = min(32, os.cpu_count() + 4)
         for github_user in chunkator(github_user_qs, 1000):
+            if is_rate_limit:
+                insert_queue(username=github_user.username)
+                continue
+
             try:
                 github_information_service = GithubInformationService(github_user.username)
                 executor.submit(github_information_service.update)
@@ -44,14 +49,12 @@ def run():
                     message=f'Rate Limit 로 인해 업데이트가 실패되었습니다. {update_user_count}명만 업데이트 되었습니다.😭'
                 )
                 # rate limit면 다른 유저들도 업데이드 못함
-                return
+                is_rate_limit = True
 
-            except Exception as e:
-                capture_exception(e)
-
+    remaining = rate_limit_check_service.check_rete_limit()
     terminate_time = timeit.default_timer()  # 종료 시간 체크
     slack_update_older_week_user(
         status='완료',
-        message=f'업데이트가 {terminate_time - start_time}초 걸렸습니다. 🤩',
+        message=f'업데이트가 {terminate_time - start_time}초 걸렸습니다. 🤩 API 호출 남은 횟수 : {remaining}',
         update_user=update_user_count
     )
