@@ -2,7 +2,6 @@ from datetime import timedelta, datetime
 
 from rest_framework import viewsets, mixins, exceptions
 from rest_framework.response import Response
-from sentry_sdk import capture_exception
 
 from api.exceptions import NotExistsGithubUser, RateLimitGithubAPI
 from api.githubs.serializers import GithubUserSerializer, OrganizationSerializer, RepositorySerializer, \
@@ -13,8 +12,7 @@ from utils.exceptions import GitHubUserDoesNotExist, RateLimit
 from utils.githubs import GithubInformationService
 
 
-class GithubUserViewSet(mixins.ListModelMixin,
-                        mixins.UpdateModelMixin,
+class GithubUserViewSet(mixins.UpdateModelMixin,
                         mixins.RetrieveModelMixin,
                         viewsets.GenericViewSet):
     """
@@ -27,19 +25,9 @@ class GithubUserViewSet(mixins.ListModelMixin,
     serializer_class = GithubUserSerializer
     lookup_url_kwarg = 'username'
 
-    def get_queryset(self):
+    def retrieve(self, request, *args, **kwargs):
         username = self.kwargs.get(self.lookup_url_kwarg)
-
-        try:
-            github_user = GithubUser.objects.filter(username=username).get()
-        except GithubUser.DoesNotExist:
-            return None
-
-        return github_user
-
-    def list(self, request, *args, **kwargs):
-        username = self.kwargs.get(self.lookup_url_kwarg)
-        github_user = self.get_queryset()
+        github_user = self.get_queryset().filter(username=username).first()
 
         if github_user is None:
             try:
@@ -52,15 +40,11 @@ class GithubUserViewSet(mixins.ListModelMixin,
             except RateLimit:
                 raise RateLimitGithubAPI()
 
-            except Exception as e:
-                capture_exception(e)
-
         serializer = self.serializer_class(github_user)
         return Response(serializer.data)
 
     def update(self, request, *args, **kwargs):
         username = self.kwargs.get(self.lookup_url_kwarg)
-        response_data = {}
 
         try:
             github_user = GithubUser.objects.filter(username=username).get()
@@ -79,9 +63,6 @@ class GithubUserViewSet(mixins.ListModelMixin,
 
         except RateLimit:
             raise RateLimitGithubAPI()
-
-        except Exception as e:
-            capture_exception(e)
 
         return Response(response_data)
 

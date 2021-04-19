@@ -3,7 +3,7 @@ from pathlib import Path
 from conf.settings.base import *
 
 # 배포 버전
-RELEASE_VERSION = '2021.3.3'
+RELEASE_VERSION = '2021.4.10'
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -13,6 +13,11 @@ DEBUG = True
 IS_PROD = True
 
 ALLOWED_HOSTS = ['OPGC_ALLOWED_HOSTS']
+
+# Gihub api auth token
+OPGC_TOKEN = 'OPGG_GITHUB_TOKEN'
+GITHUB_API_HEADER = {'Authorization': f'token {OPGC_TOKEN}'}
+
 # 임시
 CORS_ORIGIN_ALLOW_ALL = True
 # CORS_ALLOW_CREDENTIALS = True

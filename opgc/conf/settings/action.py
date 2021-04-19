@@ -11,6 +11,10 @@ IS_PROD = False
 
 ALLOWED_HOSTS = ['*', 'localhost:8000', '127.0.0.1', 'localhost']
 
+# Gihub api auth token
+OPGC_TOKEN = 'OPGG_GITHUB_TOKEN'
+GITHUB_API_HEADER = {'Authorization': f'token {OPGC_TOKEN}'}
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',

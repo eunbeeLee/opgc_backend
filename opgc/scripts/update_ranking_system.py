@@ -22,7 +22,7 @@ rank_type_model = {
 
 class RankService(object):
     # todo: 현재는 데이터가 별로 없어서 order by를 했는데, 더 좋은 아이디어가 있는지 확인 필요!
-    # todo: 동정자 처리 어떻게 할지 고민해봐야함!   
+    # todo: 동점자 처리 어떻게 할지 고민해봐야함!
 
     def create_new_rank(self, _type: str):
         """
@@ -34,14 +34,7 @@ class RankService(object):
 
         new_ranks = []
         for idx in range(1, 11):
-            new_ranks.append(
-                UserRank(
-                    type=_type,
-                    ranking=idx,
-                    score=0,
-                    github_user=None
-                )
-            )
+            new_ranks.append(UserRank(type=_type, ranking=idx, score=0, github_user=None))
 
         UserRank.objects.bulk_create(new_ranks)
 
@@ -58,21 +51,14 @@ class RankService(object):
         if rank is None:
             return
 
-        github_user_data = GithubUser.objects.values_list('id', _type).order_by(f'-{_type}')[:10]
+        github_user_data = GithubUser.objects.values('id', _type).order_by(f'-{_type}')[:10]
 
         # 랭킹 업데이트 도중 하나라도 오류가 나면 원상복구
         with transaction.atomic():
             # 최대 10개라 all()로 그냥 가져옴 todo: user가 많아지면 100개로 늘릴예정
-            order = 1
-            for _id, score in github_user_data:
-                UserRank.objects.filter(
-                    type=_type, ranking=order
-                ).update(
-                    github_user_id=_id,
-                    score=score
-                )
-
-                order += 1
+            for order, data in enumerate(github_user_data):
+                UserRank.objects.filter(type=_type, ranking=order+1).update(
+                    github_user_id=data.get('id'), score=data.get(_type))
 
     @staticmethod
     def update_language_rank():
@@ -87,16 +73,13 @@ class RankService(object):
 
             # 랭킹 업데이트 도중 하나라도 오류가 나면 원상복구
             with transaction.atomic():
-                order = 1
-                for user_language in user_languages:
+                for order, user_language in enumerate(user_languages):
                     UserRank.objects.filter(
-                        type=f'lang-{language.type}', ranking=order
+                        type=f'lang-{language.type}', ranking=order+1
                     ).update(
                         github_user_id=user_language.github_user_id,
                         score=user_language.number
                     )
-
-                    order += 1
 
 
 def run():

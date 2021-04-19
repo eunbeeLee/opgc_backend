@@ -37,7 +37,7 @@ def run():
 
     github_users = GithubUser.objects.all()
     user_count = 0
-    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+    with concurrent.futures.ThreadPoolExecutor() as executor:
         for github_user in chunkator(github_users, 1000):
             try:
                 executor.submit(check_1day_1commit, github_user.id, github_user.username)

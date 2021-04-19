@@ -1,7 +1,8 @@
+from dataclasses import asdict
 from unittest import mock
 
 import pytest
-from utils.githubs import GithubInformationService
+from utils.githubs import GithubInformationService, UserInformationDto, USER_UPDATE_FIELDS
 
 
 @pytest.fixture(scope='function')
@@ -10,27 +11,20 @@ def mock_slack_notify_new_user():
         yield patch
 
 
-@pytest.mark.urls(urls='conf.urls.api')
 @pytest.mark.django_db
 def test_get_or_create_github_user(github_context, mock_slack_notify_new_user):
     username = 'JAY-Chan9yu'
-    test_user_information = {
-        'username': username,
-        'name': 'jay',
-        'email': 'jay@test.com',
-        'location': 'Republic of Korea',
-        'avatar_url': 'https://avatars.githubusercontent.com/u/24591259?v=4',
-        'company': 'DirtyBoyz',
-        'bio': '',
-        'blog': '',
-        'public_repos': 0,
-        'followers': 0,
-        'following': 0,
-    }
-
+    user_information_dto = UserInformationDto(
+        name='jay', email='jay@test.com', location='Republic of Korea', company='DirtyBoyz',
+        avatar_url='https://avatars.githubusercontent.com/u/24591259?v=4',
+        bio='', blog='', public_repos=0, followers=0, following=0,
+        repos_url='', organizations_url=''
+    )
     github_information_service = GithubInformationService(username=username)
-    github_user = github_information_service.get_or_create_github_user(test_user_information)
+    github_user = github_information_service.get_or_create_github_user(user_information_dto)
 
     assert github_user is not None
-    for key, value in test_user_information.items():
-        assert getattr(github_user, key, None) == value
+    for key, value in asdict(user_information_dto).items():
+        if key in USER_UPDATE_FIELDS:
+            assert getattr(github_user, key, '') == value
+        
