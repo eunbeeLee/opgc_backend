@@ -24,7 +24,7 @@ def manage_api_call_fail(github_user: GithubUser, status_code: int):
 
     if status_code == 403:
         raise RateLimit()
-    elif status_code not in PASSING_RESPONSE_STATUS:
+    elif status_code in PASSING_RESPONSE_STATUS:
         return
 
     github_user.status = GithubUser.FAIL
