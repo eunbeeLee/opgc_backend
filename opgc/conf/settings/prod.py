@@ -169,5 +169,4 @@ CACHEOPS_DEFAULTS = {
 
 CACHEOPS = {
     'githubs.*': {},
-    '*.*': {},
 }
