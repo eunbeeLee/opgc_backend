@@ -169,4 +169,5 @@ CACHEOPS_DEFAULTS = {
 
 CACHEOPS = {
     'githubs.*': {},
+    'ranks.*': {},
 }
