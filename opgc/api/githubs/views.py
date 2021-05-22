@@ -5,8 +5,8 @@ from rest_framework.response import Response
 
 from api.exceptions import NotExistsGithubUser, RateLimitGithubAPI
 from api.githubs.serializers import GithubUserSerializer, OrganizationSerializer, RepositorySerializer, \
-    LanguageSerializer
-from api.paginations import IdOrderingPagination
+    LanguageSerializer, TierSerializer
+from api.paginations import IdOrderingPagination, TierOrderingPagination
 from apps.githubs.models import GithubUser, Organization, Repository, Language
 from utils.exceptions import GitHubUserDoesNotExist, RateLimit
 from utils.githubs import GithubInformationService
@@ -123,3 +123,14 @@ class LanguageViewSet(mixins.ListModelMixin,
     queryset = Language.objects.all()
     serializer_class = LanguageSerializer
     pagination_class = IdOrderingPagination
+
+
+class TierRankViewSet(mixins.ListModelMixin,
+                      viewsets.GenericViewSet):
+    """
+        endpoint : githubs/tier/
+    """
+
+    queryset = GithubUser.objects.all()
+    serializer_class = TierSerializer
+    pagination_class = TierOrderingPagination
