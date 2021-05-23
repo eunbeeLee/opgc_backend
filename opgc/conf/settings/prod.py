@@ -3,7 +3,7 @@ from pathlib import Path
 from conf.settings.base import *
 
 # 배포 버전
-RELEASE_VERSION = '2021.4.10'
+RELEASE_VERSION = '2021.5.23'
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
