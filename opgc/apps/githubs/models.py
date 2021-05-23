@@ -4,12 +4,12 @@ from apps.helpers.models import CustomBaseModel
 
 
 class GithubUser(CustomBaseModel):
-    UNRANK, BRONZE, SILVER, GOLD, DIAMOND, PLATINUM, MASTER, CHALLENGER = 0, 5, 10, 15, 20, 25, 30, 35
+    UNRANK, BRONZE, SILVER, GOLD, PLATINUM, DIAMOND, MASTER, CHALLENGER = 0, 5, 10, 15, 20, 25, 30, 35
     GITHUB_RANK_CHOICES = (
         (CHALLENGER, 'Challenger'),
         (MASTER, 'Master'),
-        (PLATINUM, 'Platinum'),
         (DIAMOND, 'Diamond'),
+        (PLATINUM, 'Platinum'),
         (GOLD, 'Gold'),
         (SILVER, 'Silver'),
         (BRONZE, 'Bronze'),
