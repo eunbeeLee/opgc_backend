@@ -3,6 +3,11 @@ from apps.reservations.models import UpdateUserQueue
 from utils.slack import slack_notify_update_user_queue
 
 
+PASSING_RESPONSE_STATUS = [204, 451]
+# 204: 컨텐츠 제공안함
+# 451: 저작권
+
+
 class GitHubUserDoesNotExist(Exception):
     def __str__(self):
         return "not exists github user."
@@ -14,13 +19,17 @@ class RateLimit(Exception):
 
 
 def manage_api_call_fail(github_user: GithubUser, status_code: int):
-    if github_user:
-        github_user.status = GithubUser.FAIL
-        github_user.save(update_fields=['status'])
-        insert_queue(github_user.username)
+    if not github_user:
+        return
 
     if status_code == 403:
         raise RateLimit()
+    elif status_code in PASSING_RESPONSE_STATUS:
+        return
+
+    github_user.status = GithubUser.FAIL
+    github_user.save(update_fields=['status'])
+    insert_queue(github_user.username)
 
 
 def insert_queue(username: str):

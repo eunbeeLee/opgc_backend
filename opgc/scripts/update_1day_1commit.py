@@ -11,6 +11,7 @@ from chunkator import chunkator
 from sentry_sdk import capture_exception
 
 from apps.githubs.models import GithubUser
+from utils.githubs import GithubInformationService
 from utils.slack import slack_update_1day_1commit
 
 
@@ -28,7 +29,8 @@ def check_1day_1commit(user_id: int, username: str):
         count += 1
 
     # print(f'{username}: {count}')
-    GithubUser.objects.filter(id=user_id).update(continuous_commit_day=count)
+    tier = GithubInformationService.get_tier_statistics(count)
+    GithubUser.objects.filter(id=user_id).update(continuous_commit_day=count, tier=tier)
 
 
 def run():

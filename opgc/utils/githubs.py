@@ -159,7 +159,6 @@ class GithubInformationService(object):
             업데이트 성공 처리
         """
         self.github_user.status = GithubUser.COMPLETED
-        self.github_user.updated = datetime.now()
         self.github_user.total_contribution = total_contribution
         self.github_user.total_stargazers_count = total_stargazers_count
         self.github_user.save(update_fields=['status', 'updated', 'total_contribution', 'total_stargazers_count'])
@@ -202,3 +201,30 @@ class GithubInformationService(object):
             total_contribution=repo_service.total_contribution,
             total_stargazers_count=repo_service.total_stargazers_count
         )
+
+    @staticmethod
+    def get_tier_statistics(commit_count: int) -> int:
+        """
+            - 티어 통계
+            일단은 1일 1커밋을 기준으로만 티어를 정하도록 함.
+            todo : 추후에 여러가지 조건들의 비율을 정해서 디밸롭하기!
+        """
+
+        if commit_count == 0:
+            tier = GithubUser.UNRANK
+        elif 1 <= commit_count < 10:
+            tier = GithubUser.BRONZE
+        elif 10 <= commit_count < 20:
+            tier = GithubUser.SILVER
+        elif 20 <= commit_count < 30:
+            tier = GithubUser.GOLD
+        elif 30 <= commit_count < 90:
+            tier = GithubUser.DIAMOND
+        elif 90 <= commit_count < 180:
+            tier = GithubUser.PLATINUM
+        elif 180 <= commit_count < 300:
+            tier = GithubUser.MASTER
+        else:
+            tier = GithubUser.CHALLENGER
+
+        return tier
