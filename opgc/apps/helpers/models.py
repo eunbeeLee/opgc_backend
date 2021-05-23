@@ -11,9 +11,10 @@ class BaseQueryset(QuerySet):
         row = super().update(**kwargs)
 
         try:
-            # update 쿼리는 캐시 무효화
-            # django-cacheops 는 update 쿼리를 invalidate 해주지 않기 때문에
-            # 이렇게 커스텀 하거나 invalidated_update() 를 써줘야 한다
+            """
+            django-cacheops 는 update 쿼리를 invalidate 해주지 않기 때문에
+            이렇게 커스텀 하거나 invalidated_update() 를 써줘야 한다
+            """
             invalidate_obj(self.get())
         except self.model.DoesNotExist:
             capture_exception(Exception(f'{self.model} : invalidate update fail'))
