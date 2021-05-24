@@ -219,9 +219,9 @@ class GithubInformationService(object):
         elif 20 <= commit_count < 30:
             tier = GithubUser.GOLD
         elif 30 <= commit_count < 90:
-            tier = GithubUser.DIAMOND
-        elif 90 <= commit_count < 180:
             tier = GithubUser.PLATINUM
+        elif 90 <= commit_count < 180:
+            tier = GithubUser.DIAMOND
         elif 180 <= commit_count < 300:
             tier = GithubUser.MASTER
         else:
