@@ -2,6 +2,7 @@
     1일 1커밋 크롤링으로 업데이트
 """
 import concurrent.futures
+import datetime
 import timeit
 
 import requests
@@ -11,6 +12,7 @@ from chunkator import chunkator
 from sentry_sdk import capture_exception
 
 from apps.githubs.models import GithubUser
+from utils.githubs import GithubInformationService
 from utils.slack import slack_update_1day_1commit
 
 
@@ -19,16 +21,21 @@ def check_1day_1commit(user_id: int, username: str):
     soup = BeautifulSoup(source, "lxml") # html.parse 보다 lxml이 더 빠르다고 한다
     count = 0
 
+    now = datetime.datetime.now() - datetime.timedelta(days=1)
     for rect in reversed(soup.select('rect')):
-        if rect.get('data-count') is None:
+        # 업데이트 당일 전날부터 체크
+        if not rect.get('data-date') or \
+                now.date() < datetime.datetime.strptime(rect.get('data-date'), '%Y-%m-%d').date():
             continue
 
-        if rect.get('data-count') == '0':
+        if rect.get('data-count') is None or rect.get('data-count') == '0':
             break
+
         count += 1
 
     # print(f'{username}: {count}')
-    GithubUser.objects.filter(id=user_id).update(continuous_commit_day=count)
+    tier = GithubInformationService.get_tier_statistics(count)
+    GithubUser.objects.filter(id=user_id).update(continuous_commit_day=count, tier=tier)
 
 
 def run():

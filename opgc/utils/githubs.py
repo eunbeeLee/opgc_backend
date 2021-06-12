@@ -1,6 +1,5 @@
 import json
 from dataclasses import dataclass, asdict
-from datetime import datetime
 
 import requests
 from django.conf import settings
@@ -39,21 +38,19 @@ class UserInformationDto:
     repos_url: str
     organizations_url: str
 
-    def __init__(self, name: str, email: str, location: str, avatar_url: str, company: str, bio: str,
-                 blog: str, public_repos: int, followers: int, following: int, repos_url: str,
-                 organizations_url: str):
-        self.name = name
-        self.email = email
-        self.location = location
-        self.avatar_url = avatar_url
-        self.company = company
-        self.bio = bio
-        self.blog = blog
-        self.public_repos = public_repos
-        self.followers = followers
-        self.following = following
-        self.repos_url = repos_url
-        self.organizations_url = organizations_url
+    def __init__(self, **kwargs):
+        self.name = kwargs.get('name')
+        self.email = kwargs.get('email')
+        self.location = kwargs.get('location')
+        self.avatar_url = kwargs.get('avatar_url')
+        self.company = kwargs.get('company')
+        self.bio = kwargs.get('bio')
+        self.blog = kwargs.get('blog')
+        self.public_repos = kwargs.get('public_repos')
+        self.followers = kwargs.get('followers')
+        self.following = kwargs.get('following')
+        self.repos_url = kwargs.get('repos_url')
+        self.organizations_url = kwargs.get('organizations_url')
 
 
 class GithubInformationService(object):
@@ -66,20 +63,7 @@ class GithubInformationService(object):
         self.is_30_min_script = is_30_min_script
 
     def create_dto(self, user_information_data: dict) -> UserInformationDto:
-        return UserInformationDto(
-            name=user_information_data.get('name'),
-            email=user_information_data.get('email'),
-            location=user_information_data.get('location'),
-            avatar_url=user_information_data.get('avatar_url'),
-            company=user_information_data.get('company'),
-            bio=user_information_data.get('bio'),
-            blog=user_information_data.get('blog'),
-            public_repos=user_information_data.get('public_repos'),
-            followers=user_information_data.get('followers'),
-            following=user_information_data.get('following'),
-            repos_url=user_information_data.get('repos_url'),
-            organizations_url=user_information_data.get('organizations_url')
-        )
+        return UserInformationDto(**user_information_data)
 
     def check_github_user(self) -> UserInformationDto:
         """
@@ -159,7 +143,6 @@ class GithubInformationService(object):
             업데이트 성공 처리
         """
         self.github_user.status = GithubUser.COMPLETED
-        self.github_user.updated = datetime.now()
         self.github_user.total_contribution = total_contribution
         self.github_user.total_stargazers_count = total_stargazers_count
         self.github_user.save(update_fields=['status', 'updated', 'total_contribution', 'total_stargazers_count'])
@@ -202,3 +185,30 @@ class GithubInformationService(object):
             total_contribution=repo_service.total_contribution,
             total_stargazers_count=repo_service.total_stargazers_count
         )
+
+    @staticmethod
+    def get_tier_statistics(commit_count: int) -> int:
+        """
+            - 티어 통계
+            일단은 1일 1커밋을 기준으로만 티어를 정하도록 함.
+            todo : 추후에 여러가지 조건들의 비율을 정해서 디밸롭하기!
+        """
+
+        if commit_count == 0:
+            tier = GithubUser.UNRANK
+        elif 1 <= commit_count < 10:
+            tier = GithubUser.BRONZE
+        elif 10 <= commit_count < 20:
+            tier = GithubUser.SILVER
+        elif 20 <= commit_count < 30:
+            tier = GithubUser.GOLD
+        elif 30 <= commit_count < 90:
+            tier = GithubUser.PLATINUM
+        elif 90 <= commit_count < 180:
+            tier = GithubUser.DIAMOND
+        elif 180 <= commit_count < 300:
+            tier = GithubUser.MASTER
+        else:
+            tier = GithubUser.CHALLENGER
+
+        return tier

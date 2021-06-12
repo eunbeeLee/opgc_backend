@@ -4,7 +4,7 @@ import urllib.parse as urlparse
 from urllib.parse import parse_qs
 
 
-class IdOrderingPagination(CursorPagination):
+class BaseCursorPagination(CursorPagination):
     page_size = 10
     max_page_size = 1000
     ordering = 'id'
@@ -25,3 +25,15 @@ class IdOrderingPagination(CursorPagination):
             return cursor[0]
         else:
             return None
+
+
+class IdOrderingPagination(BaseCursorPagination):
+    page_size = 10
+    max_page_size = 1000
+    ordering = 'id'
+
+
+class TierOrderingPagination(BaseCursorPagination):
+    page_size = 10
+    max_page_size = 1000
+    ordering = ('-tier', '-continuous_commit_day')
