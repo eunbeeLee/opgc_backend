@@ -36,4 +36,4 @@ class IdOrderingPagination(BaseCursorPagination):
 class TierOrderingPagination(BaseCursorPagination):
     page_size = 10
     max_page_size = 1000
-    ordering = '-tier'
+    ordering = ('-tier', '-continuous_commit_day')

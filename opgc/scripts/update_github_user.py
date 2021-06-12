@@ -9,9 +9,7 @@ from sentry_sdk import capture_exception
 
 from utils.githubs import GithubInformationService
 
-USERNAME_LIST = ['JAY-Chan9yu', 'techinpark', '87kangsw', 'ginameee', 'Robin-Haenara',
-                 'milooy', 'zzsza', 'MainRo', 'jinsunee', 'sergeyshaykhullin',
-                 'romanofficial', 'DY29', 'majung2', 'skyepodium']
+USERNAME_LIST = ['JAY-Chan9yu', 'techinpark', '87kangsw', 'ginameee', 'Robin-Haenara']
 
 
 def run():
