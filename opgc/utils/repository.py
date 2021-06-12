@@ -21,16 +21,15 @@ class RepositoryDto:
     contributors_url: str  # contributor 정보 URL
     languages_url: str  # 언어 정보 URL
 
-    def __init__(self, name: str, full_name: str, owner: str, stargazers_count: int,
-                 fork: bool, language: str, contributors_url: str, languages_url: str):
-        self.name = name
-        self.full_name = full_name
-        self.owner = owner
-        self.stargazers_count = stargazers_count
-        self.fork = fork
-        self.language = language
-        self.contributors_url = contributors_url
-        self.languages_url = languages_url
+    def __init__(self, **kwargs):
+        self.name = kwargs.get('name')
+        self.full_name = kwargs.get('full_name')
+        self.owner = kwargs.get('owner').get('login')
+        self.stargazers_count = kwargs.get('stargazers_count')
+        self.fork = kwargs.get('fork')
+        self.language = kwargs.get('language', '')
+        self.contributors_url = kwargs.get('contributors_url')
+        self.languages_url = kwargs.get('languages_url')
 
 
 class RepositoryService(object):
@@ -44,16 +43,7 @@ class RepositoryService(object):
         self.update_language_dict = {} # 업데이트할 language
 
     def create_dto(self, repository_data: dict) -> RepositoryDto:
-        return RepositoryDto(
-            name=repository_data.get('name'),
-            full_name=repository_data.get('full_name'),
-            owner=repository_data.get('owner').get('login'),
-            stargazers_count=repository_data.get('stargazers_count'),
-            fork=repository_data.get('fork'),
-            language=repository_data.get('language') or '',
-            contributors_url=repository_data.get('contributors_url'),
-            languages_url=repository_data.get('languages_url')
-        )
+        return RepositoryDto(**repository_data)
 
     def update_repositories(self) -> bool:
         """
