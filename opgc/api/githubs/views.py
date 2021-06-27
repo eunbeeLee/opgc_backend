@@ -1,7 +1,8 @@
 from datetime import timedelta, datetime
 
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import viewsets, mixins, exceptions
+from rest_framework import viewsets, mixins, exceptions, status
+from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from api.exceptions import NotExistsGithubUser, RateLimitGithubAPI
@@ -137,3 +138,10 @@ class TierRankViewSet(mixins.ListModelMixin,
     pagination_class = TierOrderingPagination
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['tier']
+
+
+class TestViewSet(mixins.ListModelMixin,
+                  viewsets.GenericViewSet):
+
+    def list(self, request, *args, **kwargs):
+        return Response(status=status.HTTP_403_FORBIDDEN)
