@@ -5,6 +5,7 @@ import timeit
 
 from chunkator import chunkator
 from django.db import transaction
+from django.db.models import Count
 
 from apps.githubs.models import GithubUser, Language, UserLanguage
 from apps.ranks.models import UserRank
@@ -90,9 +91,10 @@ class RankService(object):
         """
         github_user = GithubUser.objects.all()
         for user in chunkator(github_user, 1000):
+            # 동점자 제외
             user.user_rank = GithubUser.objects.filter(
                 continuous_commit_day__gt=user.continuous_commit_day
-            ).count() + 1
+            ).values('continuous_commit_day').annotate(Count('id')).count() + 1
             user.save(update_fields=['user_rank'])
 
 
