@@ -24,9 +24,10 @@ class RankService(object):
     # todo: 현재는 데이터가 별로 없어서 order by를 했는데, 더 좋은 아이디어가 있는지 확인 필요!
     # todo: 동점자 처리 어떻게 할지 고민해봐야함!
 
-    def create_new_rank(self, _type: str):
+    @staticmethod
+    def create_new_rank(_type: str):
         """
-            새로운 type의 rank를 1-10까지 만든다
+        새로운 type의 rank를 1-10까지 만든다
         """
 
         if UserRank.objects.filter(type=_type).exists():
@@ -43,6 +44,7 @@ class RankService(object):
             self.update_rank(_type)
 
         self.update_language_rank()
+        self.update_user_ranking()
 
     @staticmethod
     def update_rank(_type: str):
@@ -63,7 +65,7 @@ class RankService(object):
     @staticmethod
     def update_language_rank():
         """
-            언어별 count 값으로 랭킹
+        언어별 count 값으로 랭킹
         """
 
         languages = Language.objects.all()
@@ -80,6 +82,18 @@ class RankService(object):
                         github_user_id=user_language.github_user_id,
                         score=user_language.number
                     )
+
+    @staticmethod
+    def update_user_ranking():
+        """
+        1일 1커밋 기준으로 전체 유저의 순위를 계산하는 함수
+        """
+        github_user = GithubUser.objects.all()
+        for user in chunkator(github_user, 1000):
+            user.user_rank = GithubUser.objects.filter(
+                continuous_commit_day__gt=user.continuous_commit_day
+            ).count() + 1
+            user.save(update_fields=['user_rank'])
 
 
 def run():

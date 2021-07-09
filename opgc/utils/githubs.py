@@ -58,11 +58,12 @@ class GithubInformationService(object):
 
     def __init__(self, username, is_30_min_script=False):
         self.username = username
-        self.new_repository_list = [] # 새로 생성될 레포지토리 리스트
-        self.update_language_dict = {} # 업데이트할 language
+        self.new_repository_list = []  # 새로 생성될 레포지토리 리스트
+        self.update_language_dict = {}  # 업데이트할 language
         self.is_30_min_script = is_30_min_script
 
-    def create_dto(self, user_information_data: dict) -> UserInformationDto:
+    @staticmethod
+    def create_dto(user_information_data: dict) -> UserInformationDto:
         return UserInformationDto(**user_information_data)
 
     def check_github_user(self) -> UserInformationDto:

@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from api.exceptions import NotExistsGithubUser, RateLimitGithubAPI
 from api.githubs.serializers import GithubUserSerializer, OrganizationSerializer, RepositorySerializer, \
     LanguageSerializer, TierSerializer
-from api.paginations import IdOrderingPagination, TierOrderingPagination
+from api.paginations import IdOrderingPagination, TierOrderingPagination, UserRankOrderingPagination
 from apps.githubs.models import GithubUser, Organization, Repository, Language
 from utils.exceptions import GitHubUserDoesNotExist, RateLimit
 from utils.githubs import GithubInformationService
@@ -140,8 +140,14 @@ class TierRankViewSet(mixins.ListModelMixin,
     filterset_fields = ['tier']
 
 
-class TestViewSet(mixins.ListModelMixin,
-                  viewsets.GenericViewSet):
+class UserRankViewSet(mixins.ListModelMixin,
+                      viewsets.GenericViewSet):
+    """
+        endpoint : githubs/tier/
+    """
 
-    def list(self, request, *args, **kwargs):
-        return Response(status=status.HTTP_403_FORBIDDEN)
+    queryset = GithubUser.objects.all()
+    serializer_class = TierSerializer
+    pagination_class = UserRankOrderingPagination
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['user_rank']
