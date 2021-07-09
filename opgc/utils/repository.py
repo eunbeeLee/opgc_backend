@@ -12,12 +12,12 @@ from utils.exceptions import manage_api_call_fail
 
 @dataclass
 class RepositoryDto:
-    name: str # 레포지토리 네임
-    full_name: str # 레포지토리 풀네임
-    owner: str # 소유자(?)
-    stargazers_count: int # start 카운트
-    fork: bool # fork 여부
-    language: str # 대표 언어
+    name: str  # 레포지토리 네임
+    full_name: str  # 레포지토리 풀네임
+    owner: str  # 소유자(?)
+    stargazers_count: int  # start 카운트
+    fork: bool  # fork 여부
+    language: str  # 대표 언어
     contributors_url: str  # contributor 정보 URL
     languages_url: str  # 언어 정보 URL
 
@@ -38,16 +38,17 @@ class RepositoryService(object):
         self.github_user = github_user
         self.total_contribution = 0
         self.total_stargazers_count = 0
-        self.repositories = [] # 업데이트할 레포지토리 리스트
-        self.new_repository_list = [] # 새로 생성될 레포지토리 리스트
-        self.update_language_dict = {} # 업데이트할 language
+        self.repositories = []  # 업데이트할 레포지토리 리스트
+        self.new_repository_list = []  # 새로 생성될 레포지토리 리스트
+        self.update_language_dict = {}  # 업데이트할 language
 
-    def create_dto(self, repository_data: dict) -> RepositoryDto:
+    @staticmethod
+    def create_dto(repository_data: dict) -> RepositoryDto:
         return RepositoryDto(**repository_data)
 
     def update_repositories(self) -> bool:
         """
-            레포지토리 업데이트 함수
+        레포지토리 업데이트 함수
         """
         # 유저의 현재 모든 repository를 가져온다.
         user_repositories = list(Repository.objects.filter(github_user=self.github_user))
@@ -113,8 +114,8 @@ class RepositoryService(object):
 
     def record_language(self, languages_url: str) -> str:
         """
-            repository 에서 사용중인 언어를 찾아서 dictionary에 type과 count를 저장
-            - count : 해당 언어로 작성된 코드의 바이트 수.
+        repository 에서 사용중인 언어를 찾아서 dictionary에 type과 count를 저장
+        - count : 해당 언어로 작성된 코드의 바이트 수.
         """
 
         res = requests.get(languages_url, headers=settings.GITHUB_API_HEADER)
@@ -139,7 +140,7 @@ class RepositoryService(object):
 
     def update_or_create_language(self):
         """
-            새로 추가된 언어를 만들고 User가 사용하는 언어사용 count(byte 수)를 업데이트 해주는 함수
+        새로 추가된 언어를 만들고 User가 사용하는 언어사용 count(byte 수)를 업데이트 해주는 함수
         """
 
         # DB에 없던 Language 생성

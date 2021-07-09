@@ -35,7 +35,7 @@ class CustomBaseModel(models.Model):
 
     class Meta:
         abstract = True
-        default_manager_name = 'objects' # 명시적으로 적용
+        default_manager_name = 'objects'  # 명시적으로 적용
 
     def save(self, *args, **kwargs):
         """ On save, update timestamps """

@@ -13,10 +13,10 @@ from utils.repository import RepositoryDto, RepositoryService
 
 @dataclass
 class OrganizationDto:
-    name: str # organization 네임
-    description: str # 설명
-    logo: str # 프로필(로고)
-    repos_url: str # repository URL
+    name: str  # organization 네임
+    description: str  # 설명
+    logo: str  # 프로필(로고)
+    repos_url: str  # repository URL
 
     def __init__(self, name: str, description: str, logo: str, repos_url: str):
         self.name = name
@@ -29,10 +29,11 @@ class OrganizationService(object):
 
     def __init__(self, github_user: GithubUser):
         self.github_user = github_user
-        self.new_repositories = [] # 업데이트 해야할 레포지토리
-        self.repositories = [] # 실제 유저의 레포지토리
+        self.new_repositories = []  # 업데이트 해야할 레포지토리
+        self.repositories = []  # 실제 유저의 레포지토리
 
-    def create_dto(self, organization_data: dict) -> OrganizationDto:
+    @staticmethod
+    def create_dto(organization_data: dict) -> OrganizationDto:
         return OrganizationDto(
             name=organization_data.get('login'),
             description=organization_data.get('description'),
@@ -42,7 +43,7 @@ class OrganizationService(object):
 
     def update_organization(self, organization_url: str):
         """
-            organization(소속) 업데이트 함
+        organization(소속) 업데이트 함
         """
 
         res = requests.get(organization_url, headers=settings.GITHUB_API_HEADER)
@@ -134,7 +135,7 @@ class OrganizationService(object):
 
     def get_organization_repository(self):
         """
-            organization 에 저장되어있는 repository 정보를 가져온다
+        organization 에 저장되어있는 repository 정보를 가져온다
         """
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)

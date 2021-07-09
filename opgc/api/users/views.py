@@ -5,8 +5,10 @@ from api.users.serializers import UserSerializer
 from apps.users.models import User
 
 """
-    todo: 사용 안함
+현재는 사용하지 않는 api (곧 삭제)
 """
+
+
 class UserViewSet(viewsets.ViewSet, mixins.ListModelMixin):
     """
         endpoint : users/
