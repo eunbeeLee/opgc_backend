@@ -19,19 +19,19 @@ USER_UPDATE_FIELDS = ['avatar_url', 'company', 'bio', 'blog', 'public_repos', 'f
                       'name', 'email', 'location']
 
 """
-    * Authorization - access token 이 있는경우 1시간에 5000번 api 호출 가능 없으면 60번
+* Authorization - access token 이 있는경우 1시간에 5000번 api 호출 가능 없으면 60번
 """
 
 
 @dataclass
 class UserInformationDto:
-    name: str # 이름
-    email: str # 이메일
-    location: str # 국가
-    avatar_url: str # 프로필 URL
-    company: str # 회사
-    bio: str # 설명
-    blog: str # 블로그
+    name: str  # 이름
+    email: str  # 이메일
+    location: str  # 국가
+    avatar_url: str  # 프로필 URL
+    company: str  # 회사
+    bio: str  # 설명
+    blog: str  # 블로그
     public_repos: int
     followers: int
     following: int
@@ -58,16 +58,17 @@ class GithubInformationService(object):
 
     def __init__(self, username, is_30_min_script=False):
         self.username = username
-        self.new_repository_list = [] # 새로 생성될 레포지토리 리스트
-        self.update_language_dict = {} # 업데이트할 language
+        self.new_repository_list = []  # 새로 생성될 레포지토리 리스트
+        self.update_language_dict = {}  # 업데이트할 language
         self.is_30_min_script = is_30_min_script
 
-    def create_dto(self, user_information_data: dict) -> UserInformationDto:
+    @staticmethod
+    def create_dto(user_information_data: dict) -> UserInformationDto:
         return UserInformationDto(**user_information_data)
 
     def check_github_user(self) -> UserInformationDto:
         """
-            Github User 정보를 가져오거나 생성하는 함수
+        Github User 정보를 가져오거나 생성하는 함수
         """
         user_api = FURL.set(path=f'/users/{self.username}').url
         res = requests.get(user_api, headers=settings.GITHUB_API_HEADER)
@@ -123,7 +124,7 @@ class GithubInformationService(object):
             capture_exception(Exception("Can't get RATE LIMIT."))
 
         """
-            참고: https://docs.gitlab.com/ee/user/admin_area/settings/user_and_ip_rate_limits.html#response-headers
+        참고: https://docs.gitlab.com/ee/user/admin_area/settings/user_and_ip_rate_limits.html#response-headers
         """
         # 왠만하면 100 이상 호출하는 경우가 있어서 100으로 지정
         try:

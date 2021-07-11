@@ -18,7 +18,7 @@ from utils.slack import slack_update_1day_1commit
 
 def check_1day_1commit(user_id: int, username: str):
     source = requests.get(f'https://github.com/{username}').text
-    soup = BeautifulSoup(source, "lxml") # html.parse 보다 lxml이 더 빠르다고 한다
+    soup = BeautifulSoup(source, "lxml")  # html.parse 보다 lxml이 더 빠르다고 한다
     count = 0
 
     now = datetime.datetime.now() - datetime.timedelta(days=1)

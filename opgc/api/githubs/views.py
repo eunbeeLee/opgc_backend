@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from api.exceptions import NotExistsGithubUser, RateLimitGithubAPI
 from api.githubs.serializers import GithubUserSerializer, OrganizationSerializer, RepositorySerializer, \
     LanguageSerializer, TierSerializer
-from api.paginations import IdOrderingPagination, TierOrderingPagination
+from api.paginations import IdOrderingPagination, TierOrderingPagination, UserRankOrderingPagination
 from apps.githubs.models import GithubUser, Organization, Repository, Language
 from utils.exceptions import GitHubUserDoesNotExist, RateLimit
 from utils.githubs import GithubInformationService
@@ -17,12 +17,10 @@ class GithubUserViewSet(mixins.UpdateModelMixin,
                         mixins.RetrieveModelMixin,
                         viewsets.GenericViewSet):
     """
-        endpoint : githubs/users/:username
+    endpoint : githubs/users/:username
     """
 
-    queryset = GithubUser.objects.prefetch_related(
-        'organization', 'repository'
-    ).all()
+    queryset = GithubUser.objects.prefetch_related('organization', 'repository').all()
     serializer_class = GithubUserSerializer
     lookup_url_kwarg = 'username'
 
@@ -72,7 +70,7 @@ class OrganizationViewSet(mixins.ListModelMixin,
                           mixins.RetrieveModelMixin,
                           viewsets.GenericViewSet):
     """
-        endpoint : githubs/users/:user_pk/organizations/
+    endpoint : githubs/users/:user_pk/organizations/
     """
 
     queryset = Organization.objects.all()
@@ -95,7 +93,7 @@ class OrganizationViewSet(mixins.ListModelMixin,
 class RepositoryViewSet(mixins.ListModelMixin,
                         viewsets.GenericViewSet):
     """
-        endpoint : githubs/:user_pk/repositories/
+    endpoint : githubs/:user_pk/repositories/
     """
 
     queryset = Repository.objects.all()
@@ -118,7 +116,7 @@ class RepositoryViewSet(mixins.ListModelMixin,
 class LanguageViewSet(mixins.ListModelMixin,
                       viewsets.GenericViewSet):
     """
-        endpoint : githubs/languages/
+    endpoint : githubs/languages/
     """
 
     queryset = Language.objects.all()
@@ -129,7 +127,7 @@ class LanguageViewSet(mixins.ListModelMixin,
 class TierRankViewSet(mixins.ListModelMixin,
                       viewsets.GenericViewSet):
     """
-        endpoint : githubs/tier/
+    endpoint : githubs/tier/
     """
 
     queryset = GithubUser.objects.all()
@@ -137,3 +135,16 @@ class TierRankViewSet(mixins.ListModelMixin,
     pagination_class = TierOrderingPagination
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['tier']
+
+
+class UserRankViewSet(mixins.ListModelMixin,
+                      viewsets.GenericViewSet):
+    """
+    endpoint : githubs/user_rank/
+    """
+
+    queryset = GithubUser.objects.all()
+    serializer_class = TierSerializer
+    pagination_class = UserRankOrderingPagination
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['user_rank']
