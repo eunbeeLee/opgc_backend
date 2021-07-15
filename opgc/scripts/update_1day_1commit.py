@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import time
 import timeit
 
 import aiohttp
@@ -34,9 +35,10 @@ async def check_1day_1commit(user_id: int, username: str):
 
                 count += 1
 
-    print(f'{username}: {count}')
+    # print(f'{username}: {count}')
     tier = GithubInformationService.get_tier_statistics(count)
     GithubUser.objects.filter(id=user_id).update(continuous_commit_day=count, tier=tier)
+    time.sleep(0.1)  # 429 에러 때문에 약간의 sleep 을 준다.
 
 
 async def update_1day_1commit_futures():
