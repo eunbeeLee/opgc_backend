@@ -15,5 +15,5 @@ def run():
             UserLanguage.objects.filter(github_user_id=github_user.id).delete()
             UserOrganization.objects.filter(github_user_id=github_user.id).delete()
             UpdateUserQueue.objects.filter(username=github_user.username).delete()
-            UserRank.objects.filter(github_user_id=github_user.id).update(github_user=None)
+            UserRank.objects.filter(github_user_id=github_user.id).invalidated_update(github_user=None)
             github_user.delete()

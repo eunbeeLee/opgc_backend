@@ -37,7 +37,7 @@ async def check_1day_1commit(user_id: int, username: str):
 
     # print(f'{username}: {count}')
     tier = GithubInformationService.get_tier_statistics(count)
-    GithubUser.objects.filter(id=user_id).update(continuous_commit_day=count, tier=tier)
+    GithubUser.objects.filter(id=user_id).invalidated_update(continuous_commit_day=count, tier=tier)
     time.sleep(0.1)  # 429 에러 때문에 약간의 sleep 을 준다.
 
 
