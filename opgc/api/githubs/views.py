@@ -143,6 +143,7 @@ class UserRankViewSet(mixins.ListModelMixin,
     endpoint : githubs/user_rank/
     """
 
+    # todo: 랭킹 도메인으로 이동
     queryset = GithubUser.objects.all()
     serializer_class = TierSerializer
     pagination_class = UserRankOrderingPagination

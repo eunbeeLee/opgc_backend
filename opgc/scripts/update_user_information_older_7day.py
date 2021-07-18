@@ -55,6 +55,6 @@ def run():
     terminate_time = timeit.default_timer()  # 종료 시간 체크
     slack_update_older_week_user(
         status='완료',
-        message=f'업데이트가 {terminate_time - start_time}초 걸렸습니다. 🤩 API 호출 남은 횟수 : {remaining}',
+        message=f'업데이트가 {terminate_time - start_time:.2f}초 걸렸습니다. 🤩 API 호출 남은 횟수 : {remaining}',
         update_user=update_user_count
     )

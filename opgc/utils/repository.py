@@ -104,7 +104,7 @@ class RepositoryService(object):
                     owner=repository.owner,
                     contribution=contribution,
                     stargazers_count=repository.stargazers_count,
-                    rep_language=repository.language,
+                    rep_language=repository.language if repository.language else '',
                     languages=languages
                 )
                 self.total_stargazers_count += repository.stargazers_count

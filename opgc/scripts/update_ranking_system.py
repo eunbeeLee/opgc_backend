@@ -118,5 +118,5 @@ def run():
     terminate_time = timeit.default_timer()  # 종료 시간 체크
     slack_update_ranking_system(
         status='완료',
-        message=f'랭킹 업데이트가 {terminate_time - start_time}초 걸렸습니다.🎉',
+        message=f'랭킹 업데이트가 {terminate_time - start_time:.2f}초 걸렸습니다.🎉',
     )
