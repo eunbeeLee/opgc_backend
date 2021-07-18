@@ -10,7 +10,7 @@ from chunkator import chunkator
 
 from apps.githubs.models import GithubUser
 from utils.exceptions import RateLimit, insert_queue
-from utils.githubs import GithubInformationService
+from core.github_service import GithubInformationService
 from utils.slack import slack_notify_update_fail, slack_update_older_week_user
 
 
@@ -19,11 +19,13 @@ def run():
     try:
         rate_limit_check_service = GithubInformationService(None)
         rate_limit_check_service.check_rete_limit()
+
     except RateLimit:
         return
 
     older_week_date = datetime.now() - timedelta(7)
     github_user_qs = GithubUser.objects.filter(updated__lte=older_week_date)
+
     if not github_user_qs:
         return
 
@@ -32,6 +34,7 @@ def run():
 
     update_user_count = 0
     is_rate_limit = False
+
     with concurrent.futures.ThreadPoolExecutor() as executor:
         # max_worker default = min(32, os.cpu_count() + 4)
         for github_user in chunkator(github_user_qs, 1000):
@@ -44,17 +47,16 @@ def run():
                 executor.submit(github_information_service.update)
                 update_user_count += 1
 
-            except RateLimit:
+            except RateLimit:  # rate limit면 다른 유저들도 업데이드 못함
                 slack_notify_update_fail(
                     message=f'Rate Limit 로 인해 업데이트가 실패되었습니다. {update_user_count}명만 업데이트 되었습니다.😭'
                 )
-                # rate limit면 다른 유저들도 업데이드 못함
                 is_rate_limit = True
 
     remaining = rate_limit_check_service.check_rete_limit()
     terminate_time = timeit.default_timer()  # 종료 시간 체크
     slack_update_older_week_user(
         status='완료',
-        message=f'업데이트가 {terminate_time - start_time}초 걸렸습니다. 🤩 API 호출 남은 횟수 : {remaining}',
+        message=f'업데이트가 {terminate_time - start_time:.2f}초 걸렸습니다. 🤩 API 호출 남은 횟수 : {remaining}',
         update_user=update_user_count
     )

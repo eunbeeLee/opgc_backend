@@ -1,38 +1,17 @@
 import asyncio
 import json
-from dataclasses import dataclass
+from typing import Optional
 
 import aiohttp
 import requests
 from django.conf import settings
 
 from apps.githubs.models import GithubUser, Repository, Language, UserLanguage
+from core.github_dto import RepositoryDto
 from utils.exceptions import manage_api_call_fail
 
 
-@dataclass
-class RepositoryDto:
-    name: str  # 레포지토리 네임
-    full_name: str  # 레포지토리 풀네임
-    owner: str  # 소유자(?)
-    stargazers_count: int  # start 카운트
-    fork: bool  # fork 여부
-    language: str  # 대표 언어
-    contributors_url: str  # contributor 정보 URL
-    languages_url: str  # 언어 정보 URL
-
-    def __init__(self, **kwargs):
-        self.name = kwargs.get('name')
-        self.full_name = kwargs.get('full_name')
-        self.owner = kwargs.get('owner').get('login')
-        self.stargazers_count = kwargs.get('stargazers_count')
-        self.fork = kwargs.get('fork')
-        self.language = kwargs.get('language', '')
-        self.contributors_url = kwargs.get('contributors_url')
-        self.languages_url = kwargs.get('languages_url')
-
-
-class RepositoryService(object):
+class RepositoryService:
 
     def __init__(self, github_user: GithubUser):
         self.github_user = github_user
@@ -71,7 +50,7 @@ class RepositoryService(object):
 
         return True
 
-    def create_repository(self, repository: RepositoryDto):
+    def create_repository(self, repository: RepositoryDto) -> (int, Optional[Repository]):
         contribution = 0
         new_repository = None
 
@@ -104,7 +83,7 @@ class RepositoryService(object):
                     owner=repository.owner,
                     contribution=contribution,
                     stargazers_count=repository.stargazers_count,
-                    rep_language=repository.language,
+                    rep_language=repository.language if repository.language else '',
                     languages=languages
                 )
                 self.total_stargazers_count += repository.stargazers_count
@@ -146,7 +125,8 @@ class RepositoryService(object):
         # DB에 없던 Language 생성
         new_language_list = []
         exists_languages = set(Language.objects.filter(
-            type__in=self.update_language_dict.keys()).values_list('type', flat=True))
+            type__in=self.update_language_dict.keys()).values_list('type', flat=True)
+        )
         new_languages = set(self.update_language_dict.keys()) - exists_languages
 
         for language in new_languages:
@@ -160,6 +140,7 @@ class RepositoryService(object):
         user_language_qs = UserLanguage.objects.prefetch_related('language').filter(
             github_user_id=self.github_user.id, language__type__in=self.update_language_dict.keys()
         )
+
         for user_language in user_language_qs:
             if user_language.language.type in self.update_language_dict.keys():
                 count = self.update_language_dict.pop(user_language.language.type)
@@ -233,8 +214,8 @@ class RepositoryService(object):
             self.total_contribution += _contribution
 
     async def update_repository_futures(self, repositories, user_repositories: list):
-        futures = [asyncio.ensure_future(
-            self.update_repository(repository, user_repositories)) for repository in repositories
+        futures = [
+            asyncio.ensure_future(self.update_repository(repository, user_repositories)) for repository in repositories
         ]
 
         await asyncio.gather(*futures)

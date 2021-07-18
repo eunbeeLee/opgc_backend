@@ -9,6 +9,7 @@ from scripts.update_ranking_system import RankService, rank_type_model
 
 def run():
     rank_service = RankService()
+
     for _type in rank_type_model.keys():
         rank_service.create_new_rank(_type=_type)
 

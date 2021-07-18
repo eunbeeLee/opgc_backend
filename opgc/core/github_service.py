@@ -1,5 +1,5 @@
 import json
-from dataclasses import dataclass, asdict
+from dataclasses import asdict
 
 import requests
 from django.conf import settings
@@ -7,53 +7,25 @@ from furl import furl
 from sentry_sdk import capture_exception
 
 from apps.githubs.models import GithubUser
+from core.github_dto import UserInformationDto
 from utils.exceptions import GitHubUserDoesNotExist, RateLimit, manage_api_call_fail, insert_queue
-from utils.organization import OrganizationService
-from utils.repository import RepositoryService
+from core.organization_service import OrganizationService
+from core.repository_service import RepositoryService
 from utils.slack import slack_notify_new_user
 
 FURL = furl('https://api.github.com/')
 GITHUB_RATE_LIMIT_URL = 'https://api.github.com/rate_limit'
 CHECK_RATE_REMAIN = 100
-USER_UPDATE_FIELDS = ['avatar_url', 'company', 'bio', 'blog', 'public_repos', 'followers', 'following',
-                      'name', 'email', 'location']
-
-"""
-* Authorization - access token 이 있는경우 1시간에 5000번 api 호출 가능 없으면 60번
-"""
+USER_UPDATE_FIELDS = [
+    'avatar_url', 'company', 'bio', 'blog', 'public_repos', 'followers', 'following','name', 'email', 'location'
+]
 
 
-@dataclass
-class UserInformationDto:
-    name: str  # 이름
-    email: str  # 이메일
-    location: str  # 국가
-    avatar_url: str  # 프로필 URL
-    company: str  # 회사
-    bio: str  # 설명
-    blog: str  # 블로그
-    public_repos: int
-    followers: int
-    following: int
-    repos_url: str
-    organizations_url: str
+class GithubInformationService:
+    """
+    Authorization - access token 이 있는경우 1시간에 5000번 api 호출 가능 없으면 60번
+    """
 
-    def __init__(self, **kwargs):
-        self.name = kwargs.get('name')
-        self.email = kwargs.get('email')
-        self.location = kwargs.get('location')
-        self.avatar_url = kwargs.get('avatar_url')
-        self.company = kwargs.get('company')
-        self.bio = kwargs.get('bio')
-        self.blog = kwargs.get('blog')
-        self.public_repos = kwargs.get('public_repos')
-        self.followers = kwargs.get('followers')
-        self.following = kwargs.get('following')
-        self.repos_url = kwargs.get('repos_url')
-        self.organizations_url = kwargs.get('organizations_url')
-
-
-class GithubInformationService(object):
     github_user = None
 
     def __init__(self, username, is_30_min_script=False):
@@ -83,7 +55,7 @@ class GithubInformationService(object):
     def get_or_create_github_user(self, user_information: UserInformationDto) -> GithubUser:
         try:
             update_fields = ['status']
-            github_user = GithubUser.objects.filter(username=self.username).get()
+            github_user = GithubUser.objects.get(username=self.username)
             github_user.status = GithubUser.UPDATING
 
             for key, value in asdict(user_information).items():
@@ -123,17 +95,17 @@ class GithubInformationService(object):
                 insert_queue(self.username)
             capture_exception(Exception("Can't get RATE LIMIT."))
 
-        """
-        참고: https://docs.gitlab.com/ee/user/admin_area/settings/user_and_ip_rate_limits.html#response-headers
-        """
+        # 참고: https://docs.gitlab.com/ee/user/admin_area/settings/user_and_ip_rate_limits.html#response-headers
         # 왠만하면 100 이상 호출하는 경우가 있어서 100으로 지정
         try:
             content = json.loads(res.content)
             remaining = content['rate']['remaining']
+
             if remaining < CHECK_RATE_REMAIN:
                 if not self.is_30_min_script:
                     insert_queue(self.username)
                 raise RateLimit()
+
         except json.JSONDecodeError:
             return 0
 
@@ -167,6 +139,7 @@ class GithubInformationService(object):
             for repository_data in json.loads(repo_res.content):
                 repository_dto = repo_service.create_dto(repository_data)
                 repo_service.repositories.append(repository_dto)
+
         except json.JSONDecodeError:
             pass
 
@@ -186,30 +159,3 @@ class GithubInformationService(object):
             total_contribution=repo_service.total_contribution,
             total_stargazers_count=repo_service.total_stargazers_count
         )
-
-    @staticmethod
-    def get_tier_statistics(commit_count: int) -> int:
-        """
-            - 티어 통계
-            일단은 1일 1커밋을 기준으로만 티어를 정하도록 함.
-            todo : 추후에 여러가지 조건들의 비율을 정해서 디밸롭하기!
-        """
-
-        if commit_count == 0:
-            tier = GithubUser.UNRANK
-        elif 1 <= commit_count < 10:
-            tier = GithubUser.BRONZE
-        elif 10 <= commit_count < 20:
-            tier = GithubUser.SILVER
-        elif 20 <= commit_count < 30:
-            tier = GithubUser.GOLD
-        elif 30 <= commit_count < 90:
-            tier = GithubUser.PLATINUM
-        elif 90 <= commit_count < 180:
-            tier = GithubUser.DIAMOND
-        elif 180 <= commit_count < 300:
-            tier = GithubUser.MASTER
-        else:
-            tier = GithubUser.CHALLENGER
-
-        return tier

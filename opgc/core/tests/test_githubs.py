@@ -2,12 +2,12 @@ from dataclasses import asdict
 from unittest import mock
 
 import pytest
-from utils.githubs import GithubInformationService, UserInformationDto, USER_UPDATE_FIELDS
+from core.github_service import GithubInformationService, UserInformationDto, USER_UPDATE_FIELDS
 
 
 @pytest.fixture(scope='function')
 def mock_slack_notify_new_user():
-    with mock.patch('utils.githubs.slack_notify_new_user') as patch:
+    with mock.patch('utils.slack.slack_notify_new_user') as patch:
         yield patch
 
 
@@ -27,4 +27,3 @@ def test_get_or_create_github_user(github_context, mock_slack_notify_new_user):
     for key, value in asdict(user_information_dto).items():
         if key in USER_UPDATE_FIELDS:
             assert getattr(github_user, key, '') == value
-        

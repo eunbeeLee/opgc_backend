@@ -10,7 +10,7 @@ from api.githubs.serializers import GithubUserSerializer, OrganizationSerializer
 from api.paginations import IdOrderingPagination, TierOrderingPagination, UserRankOrderingPagination
 from apps.githubs.models import GithubUser, Organization, Repository, Language
 from utils.exceptions import GitHubUserDoesNotExist, RateLimit
-from utils.githubs import GithubInformationService
+from core.github_service import GithubInformationService
 
 
 class GithubUserViewSet(mixins.UpdateModelMixin,
@@ -28,7 +28,7 @@ class GithubUserViewSet(mixins.UpdateModelMixin,
         username = self.kwargs.get(self.lookup_url_kwarg)
         github_user = self.get_queryset().filter(username=username).first()
 
-        if github_user is None:
+        if not github_user:
             try:
                 github_information_service = GithubInformationService(username)
                 github_user = github_information_service.update()
@@ -143,6 +143,7 @@ class UserRankViewSet(mixins.ListModelMixin,
     endpoint : githubs/user_rank/
     """
 
+    # todo: 랭킹 도메인으로 이동
     queryset = GithubUser.objects.all()
     serializer_class = TierSerializer
     pagination_class = UserRankOrderingPagination
