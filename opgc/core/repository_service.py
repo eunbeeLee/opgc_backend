@@ -1,35 +1,14 @@
 import asyncio
 import json
-from dataclasses import dataclass
+from typing import Optional
 
 import aiohttp
 import requests
 from django.conf import settings
 
 from apps.githubs.models import GithubUser, Repository, Language, UserLanguage
+from core.github_dto import RepositoryDto
 from utils.exceptions import manage_api_call_fail
-
-
-@dataclass
-class RepositoryDto:
-    name: str  # 레포지토리 네임
-    full_name: str  # 레포지토리 풀네임
-    owner: str  # 소유자(?)
-    stargazers_count: int  # start 카운트
-    fork: bool  # fork 여부
-    language: str  # 대표 언어
-    contributors_url: str  # contributor 정보 URL
-    languages_url: str  # 언어 정보 URL
-
-    def __init__(self, **kwargs):
-        self.name = kwargs.get('name')
-        self.full_name = kwargs.get('full_name')
-        self.owner = kwargs.get('owner').get('login')
-        self.stargazers_count = kwargs.get('stargazers_count')
-        self.fork = kwargs.get('fork')
-        self.language = kwargs.get('language', '')
-        self.contributors_url = kwargs.get('contributors_url')
-        self.languages_url = kwargs.get('languages_url')
 
 
 class RepositoryService:
@@ -71,7 +50,7 @@ class RepositoryService:
 
         return True
 
-    def create_repository(self, repository: RepositoryDto):
+    def create_repository(self, repository: RepositoryDto) -> (int, Optional[Repository]):
         contribution = 0
         new_repository = None
 

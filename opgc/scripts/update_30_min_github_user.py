@@ -17,10 +17,7 @@ from utils.slack import slack_update_github_user, slack_notify_update_fail
 def run():
     start_time = timeit.default_timer()  # 시작 시간 체크
 
-    update_user_queue_qs = UpdateUserQueue.objects.filter(
-        status__in=[UpdateUserQueue.READY, UpdateUserQueue.FAIL]
-    )
-
+    update_user_queue_qs = UpdateUserQueue.objects.filter(status__in=[UpdateUserQueue.READY, UpdateUserQueue.FAIL])
     if not update_user_queue_qs:
         return
 
@@ -28,11 +25,13 @@ def run():
     try:
         rate_limit_check_service = GithubInformationService(None)
         rate_limit_check_service.check_rete_limit()
+
     except RateLimit:
         return
 
     slack_update_github_user(status='시작', message='')
     update_user_count = 0
+
     for user_queue in chunkator(update_user_queue_qs, 1000):
         try:
             github_information_service = GithubInformationService(user_queue.username, True)
@@ -42,11 +41,10 @@ def run():
             user_queue.save(update_fields=['status'])
             update_user_count += 1
 
-        except RateLimit:
+        except RateLimit:  # rate limit면 다른 유저들도 업데이드 못함
             slack_notify_update_fail(
                 message=f'Rate Limit 로 인해 업데이트가 실패되었습니다. {update_user_count}명만 업데이트 되었습니다.😭'
             )
-            # rate limit면 다른 유저들도 업데이드 못함
             return
 
         except Exception as e:

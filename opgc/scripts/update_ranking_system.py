@@ -51,7 +51,7 @@ class RankService(object):
     def update_rank(_type: str):
         rank = rank_type_model.get(_type)
 
-        if rank is None:
+        if not rank:
             return
 
         github_user_data = GithubUser.objects.values('id', _type).order_by(f'-{_type}')[:10]

@@ -1,28 +1,14 @@
 import asyncio
 import json
-from dataclasses import dataclass
 
 import aiohttp
 import requests
 from django.conf import settings
 
 from apps.githubs.models import GithubUser, UserOrganization, Organization
+from core.github_dto import OrganizationDto
 from utils.exceptions import manage_api_call_fail
-from core.repository_service import RepositoryDto, RepositoryService
-
-
-@dataclass
-class OrganizationDto:
-    name: str  # organization 네임
-    description: str  # 설명
-    logo: str  # 프로필(로고)
-    repos_url: str  # repository URL
-
-    def __init__(self, name: str, description: str, logo: str, repos_url: str):
-        self.name = name
-        self.description = description or ''
-        self.logo = logo or ''
-        self.repos_url = repos_url or ''
+from core.repository_service import RepositoryService
 
 
 class OrganizationService:
@@ -60,6 +46,7 @@ class OrganizationService:
             for organization_data in json.loads(res.content):
                 org_dto = self.create_dto(organization_data)
                 organizations.append(org_dto)
+
         except json.JSONDecodeError:
             return
 

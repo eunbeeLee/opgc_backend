@@ -1,5 +1,5 @@
 import json
-from dataclasses import dataclass, asdict
+from dataclasses import asdict
 
 import requests
 from django.conf import settings
@@ -7,6 +7,7 @@ from furl import furl
 from sentry_sdk import capture_exception
 
 from apps.githubs.models import GithubUser
+from core.github_dto import UserInformationDto
 from utils.exceptions import GitHubUserDoesNotExist, RateLimit, manage_api_call_fail, insert_queue
 from core.organization_service import OrganizationService
 from core.repository_service import RepositoryService
@@ -18,36 +19,6 @@ CHECK_RATE_REMAIN = 100
 USER_UPDATE_FIELDS = [
     'avatar_url', 'company', 'bio', 'blog', 'public_repos', 'followers', 'following','name', 'email', 'location'
 ]
-
-
-@dataclass
-class UserInformationDto:
-    name: str  # 이름
-    email: str  # 이메일
-    location: str  # 국가
-    avatar_url: str  # 프로필 URL
-    company: str  # 회사
-    bio: str  # 설명
-    blog: str  # 블로그
-    public_repos: int
-    followers: int
-    following: int
-    repos_url: str
-    organizations_url: str
-
-    def __init__(self, **kwargs):
-        self.name = kwargs.get('name')
-        self.email = kwargs.get('email')
-        self.location = kwargs.get('location')
-        self.avatar_url = kwargs.get('avatar_url')
-        self.company = kwargs.get('company')
-        self.bio = kwargs.get('bio')
-        self.blog = kwargs.get('blog')
-        self.public_repos = kwargs.get('public_repos')
-        self.followers = kwargs.get('followers')
-        self.following = kwargs.get('following')
-        self.repos_url = kwargs.get('repos_url')
-        self.organizations_url = kwargs.get('organizations_url')
 
 
 class GithubInformationService:
@@ -129,10 +100,12 @@ class GithubInformationService:
         try:
             content = json.loads(res.content)
             remaining = content['rate']['remaining']
+
             if remaining < CHECK_RATE_REMAIN:
                 if not self.is_30_min_script:
                     insert_queue(self.username)
                 raise RateLimit()
+
         except json.JSONDecodeError:
             return 0
 
@@ -166,6 +139,7 @@ class GithubInformationService:
             for repository_data in json.loads(repo_res.content):
                 repository_dto = repo_service.create_dto(repository_data)
                 repo_service.repositories.append(repository_dto)
+
         except json.JSONDecodeError:
             pass
 
