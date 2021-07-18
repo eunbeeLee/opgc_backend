@@ -6,7 +6,7 @@ import requests
 from django.conf import settings
 
 from apps.githubs.models import GithubUser, UserOrganization, Organization
-from core.github_dto import OrganizationDto
+from core.github_dto import OrganizationDto, RepositoryDto
 from utils.exceptions import manage_api_call_fail
 from core.repository_service import RepositoryService
 
