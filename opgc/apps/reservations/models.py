@@ -1,6 +1,6 @@
 from django.db import models
 
-from apps.helpers.models import CustomBaseModel
+from core.models import CustomBaseModel
 
 
 class UpdateUserQueue(CustomBaseModel):
