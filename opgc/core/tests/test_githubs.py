@@ -7,7 +7,7 @@ from core.github_service import GithubInformationService, UserInformationDto, US
 
 @pytest.fixture(scope='function')
 def mock_slack_notify_new_user():
-    with mock.patch('utils.githubs.slack_notify_new_user') as patch:
+    with mock.patch('utils.slack.slack_notify_new_user') as patch:
         yield patch
 
 
