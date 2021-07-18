@@ -69,14 +69,14 @@ async def check_1day_1commit(github_user: GithubUser):
 
 
 def update_1day_1commit(github_user_id: int = None):
-
     async def update_1day_1commit_futures(user_id: int = None):
         github_users = GithubUser.objects.filter(id=user_id) if user_id else GithubUser.objects.all()
+
         if not github_users:
             return
 
-        futures = [asyncio.ensure_future(
-            check_1day_1commit(github_user)) for github_user in chunkator(github_users, 1000)
+        futures = [
+            asyncio.ensure_future(check_1day_1commit(github_user)) for github_user in chunkator(github_users, 1000)
         ]
 
         await asyncio.gather(*futures)

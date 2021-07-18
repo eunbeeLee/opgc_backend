@@ -8,19 +8,16 @@ from sentry_sdk import capture_exception
 
 from apps.githubs.models import GithubUser
 from utils.exceptions import GitHubUserDoesNotExist, RateLimit, manage_api_call_fail, insert_queue
-from utils.organization import OrganizationService
-from utils.repository import RepositoryService
+from core.organization_service import OrganizationService
+from core.repository_service import RepositoryService
 from utils.slack import slack_notify_new_user
 
 FURL = furl('https://api.github.com/')
 GITHUB_RATE_LIMIT_URL = 'https://api.github.com/rate_limit'
 CHECK_RATE_REMAIN = 100
-USER_UPDATE_FIELDS = ['avatar_url', 'company', 'bio', 'blog', 'public_repos', 'followers', 'following',
-                      'name', 'email', 'location']
-
-"""
-* Authorization - access token 이 있는경우 1시간에 5000번 api 호출 가능 없으면 60번
-"""
+USER_UPDATE_FIELDS = [
+    'avatar_url', 'company', 'bio', 'blog', 'public_repos', 'followers', 'following','name', 'email', 'location'
+]
 
 
 @dataclass
@@ -53,7 +50,11 @@ class UserInformationDto:
         self.organizations_url = kwargs.get('organizations_url')
 
 
-class GithubInformationService(object):
+class GithubInformationService:
+    """
+    Authorization - access token 이 있는경우 1시간에 5000번 api 호출 가능 없으면 60번
+    """
+
     github_user = None
 
     def __init__(self, username, is_30_min_script=False):
@@ -83,7 +84,7 @@ class GithubInformationService(object):
     def get_or_create_github_user(self, user_information: UserInformationDto) -> GithubUser:
         try:
             update_fields = ['status']
-            github_user = GithubUser.objects.filter(username=self.username).get()
+            github_user = GithubUser.objects.get(username=self.username)
             github_user.status = GithubUser.UPDATING
 
             for key, value in asdict(user_information).items():
@@ -123,9 +124,7 @@ class GithubInformationService(object):
                 insert_queue(self.username)
             capture_exception(Exception("Can't get RATE LIMIT."))
 
-        """
-        참고: https://docs.gitlab.com/ee/user/admin_area/settings/user_and_ip_rate_limits.html#response-headers
-        """
+        # 참고: https://docs.gitlab.com/ee/user/admin_area/settings/user_and_ip_rate_limits.html#response-headers
         # 왠만하면 100 이상 호출하는 경우가 있어서 100으로 지정
         try:
             content = json.loads(res.content)

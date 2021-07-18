@@ -23,7 +23,7 @@ rank_type_model = {
 
 class RankService(object):
     # todo: 현재는 데이터가 별로 없어서 order by를 했는데, 더 좋은 아이디어가 있는지 확인 필요!
-    # todo: 동점자 처리 어떻게 할지 고민해봐야함!
+    #       동점자 처리 어떻게 할지 고민해봐야함!
 
     @staticmethod
     def create_new_rank(_type: str):
@@ -78,7 +78,8 @@ class RankService(object):
             with transaction.atomic():
                 for order, user_language in enumerate(user_languages):
                     UserRank.objects.filter(
-                        type=f'lang-{language.type}', ranking=order+1
+                        type=f'lang-{language.type}',
+                        ranking=order+1
                     ).invalidated_update(
                         github_user_id=user_language.github_user_id,
                         score=user_language.number

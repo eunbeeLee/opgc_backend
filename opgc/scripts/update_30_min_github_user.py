@@ -10,7 +10,7 @@ from sentry_sdk import capture_exception
 
 from apps.reservations.models import UpdateUserQueue
 from utils.exceptions import RateLimit
-from utils.githubs import GithubInformationService
+from core.github_service import GithubInformationService
 from utils.slack import slack_update_github_user, slack_notify_update_fail
 
 

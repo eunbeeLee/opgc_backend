@@ -10,7 +10,7 @@ from chunkator import chunkator
 
 from apps.githubs.models import GithubUser
 from utils.exceptions import RateLimit, insert_queue
-from utils.githubs import GithubInformationService
+from core.github_service import GithubInformationService
 from utils.slack import slack_notify_update_fail, slack_update_older_week_user
 
 

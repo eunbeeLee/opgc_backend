@@ -32,7 +32,7 @@ class RepositoryDto:
         self.languages_url = kwargs.get('languages_url')
 
 
-class RepositoryService(object):
+class RepositoryService:
 
     def __init__(self, github_user: GithubUser):
         self.github_user = github_user
@@ -146,7 +146,8 @@ class RepositoryService(object):
         # DB에 없던 Language 생성
         new_language_list = []
         exists_languages = set(Language.objects.filter(
-            type__in=self.update_language_dict.keys()).values_list('type', flat=True))
+            type__in=self.update_language_dict.keys()).values_list('type', flat=True)
+        )
         new_languages = set(self.update_language_dict.keys()) - exists_languages
 
         for language in new_languages:
@@ -160,6 +161,7 @@ class RepositoryService(object):
         user_language_qs = UserLanguage.objects.prefetch_related('language').filter(
             github_user_id=self.github_user.id, language__type__in=self.update_language_dict.keys()
         )
+
         for user_language in user_language_qs:
             if user_language.language.type in self.update_language_dict.keys():
                 count = self.update_language_dict.pop(user_language.language.type)
@@ -233,8 +235,8 @@ class RepositoryService(object):
             self.total_contribution += _contribution
 
     async def update_repository_futures(self, repositories, user_repositories: list):
-        futures = [asyncio.ensure_future(
-            self.update_repository(repository, user_repositories)) for repository in repositories
+        futures = [
+            asyncio.ensure_future(self.update_repository(repository, user_repositories)) for repository in repositories
         ]
 
         await asyncio.gather(*futures)

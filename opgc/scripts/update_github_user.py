@@ -7,7 +7,7 @@ import timeit
 
 from sentry_sdk import capture_exception
 
-from utils.githubs import GithubInformationService
+from core.github_service import GithubInformationService
 
 USERNAME_LIST = ['JAY-Chan9yu', 'techinpark', '87kangsw', 'ginameee', 'Robin-Haenara']
 

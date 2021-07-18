@@ -8,7 +8,7 @@ from django.conf import settings
 
 from apps.githubs.models import GithubUser, UserOrganization, Organization
 from utils.exceptions import manage_api_call_fail
-from utils.repository import RepositoryDto, RepositoryService
+from core.repository_service import RepositoryDto, RepositoryService
 
 
 @dataclass
@@ -25,7 +25,7 @@ class OrganizationDto:
         self.repos_url = repos_url or ''
 
 
-class OrganizationService(object):
+class OrganizationService:
 
     def __init__(self, github_user: GithubUser):
         self.github_user = github_user
@@ -66,7 +66,7 @@ class OrganizationService(object):
         for organization_dto in organizations:
             try:
                 update_fields = []
-                organization = Organization.objects.filter(name=organization_dto.name).get()
+                organization = Organization.objects.get(name=organization_dto.name)
 
                 for idx, org in enumerate(user_organizations):
                     if organization.name == org:
@@ -115,8 +115,8 @@ class OrganizationService(object):
         new_user_organization_list = []
         for organization_id in update_user_organization_list:
             if not UserOrganization.objects.filter(
-                    github_user_id=self.github_user.id,
-                    organization_id=organization_id
+                github_user_id=self.github_user.id,
+                organization_id=organization_id
             ).exists():
                 new_user_organization_list.append(
                     UserOrganization(
@@ -146,16 +146,18 @@ class OrganizationService(object):
             async with session.get(repository.contributors_url, headers=settings.GITHUB_API_HEADER) as res:
                 response_text = await res.text()
 
-                if res.status == 200:
-                    # 451은 레포지토리 접근 오류('Repository access blocked') - 저작권에 따라 block 될 수 있음
-                    for contributor in json.loads(response_text):
-                        if self.github_user.username == contributor.get('login'):
-                            self.repositories.append(repository)
-                            break
+                if res.status != 200:
+                    return
+
+                # 451은 레포지토리 접근 오류('Repository access blocked') - 저작권에 따라 block 될 수 있음
+                for contributor in json.loads(response_text):
+                    if self.github_user.username == contributor.get('login'):
+                        self.repositories.append(repository)
+                        break
 
     async def save_organization_repository_futures(self, repositories: list):
-        futures = [asyncio.ensure_future(
-            self.append_organization_repository(repository)) for repository in repositories
+        futures = [
+            asyncio.ensure_future(self.append_organization_repository(repository)) for repository in repositories
         ]
 
         await asyncio.gather(*futures)
