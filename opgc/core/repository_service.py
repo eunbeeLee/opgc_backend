@@ -68,8 +68,9 @@ class RepositoryService:
             return contribution, new_repository
 
         for contributor in contributors:
-            # User 타입이고 contributor 가 본인인 경우
-            if contributor.get('type') == 'User' and contributor.get('login') == self.github_user.username:
+            # User 타입이고 contributor 가 본인인 경우 (깃헙에서 대소문자 구분을 하지않아서 lower 처리후 비교)
+            if contributor.get('type') == 'User' and \
+                    contributor.get('login').lower() == self.github_user.username.lower():
                 contribution = contributor.get('contributions', 0)
                 languages = ''
 
