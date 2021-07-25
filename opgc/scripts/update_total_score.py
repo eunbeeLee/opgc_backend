@@ -14,6 +14,12 @@ def run():
 
     for github_user in chunkator(github_users, 1000):
         github_service = GithubInformationService(username=github_user.username)
+        github_user.total_score = github_service.get_total_score(github_user)
+        github_user.save(update_fields=['total_score'])
+        print(f'[{github_user}] - {github_user.total_score}')
+
+    for github_user in chunkator(github_users, 1000):
+        github_service = GithubInformationService(username=github_user.username)
         github_user.tier = github_service.get_tier_statistics(github_user.user_rank)
         github_user.save(update_fields=['tier'])
         print(f'[{github_user}] - {github_user.get_tier_display()}[{github_user.user_rank}]')
