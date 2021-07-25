@@ -79,13 +79,10 @@ class RankService(object):
             # 랭킹 업데이트 도중 하나라도 오류가 나면 원상복구
             with transaction.atomic():
                 for order, user_language in enumerate(user_languages):
-                    UserRank.objects.filter(
-                        type=f'lang-{language.type}',
-                        ranking=order+1
-                    ).invalidated_update(
-                        github_user_id=user_language.github_user_id,
-                        score=user_language.number
-                    )
+                    user_rank, is_created = UserRank.objects.get_or_create(type=f'lang-{language.type}', ranking=order+1)
+                    user_rank.github_user_id = user_language.github_user_id
+                    user_rank.score = user_language.number
+                    user_rank.save(update_fields=['github_user_id', 'score'])
 
     @staticmethod
     def update_user_ranking():
