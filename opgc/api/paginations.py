@@ -33,6 +33,12 @@ class IdOrderingPagination(BaseCursorPagination):
     ordering = 'id'
 
 
+class DescIdOrderingPagination(BaseCursorPagination):
+    page_size = 10
+    max_page_size = 1000
+    ordering = '-id'
+
+
 class TierOrderingPagination(BaseCursorPagination):
     page_size = 10
     max_page_size = 1000
