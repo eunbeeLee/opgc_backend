@@ -35,5 +35,4 @@ urlpatterns = [
     url(r'^users/(?P<user_pk>\d+)/repositories/$', repository_list, name='repository_list'),
     url(r'^languages/$', language_list, name='language_list'),
     url(r'^tier/$', tier_list, name='tier_list'),
-
 ]
