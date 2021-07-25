@@ -158,6 +158,8 @@ class GithubInformationService:
         """
 
         last_user_rank = GithubUser.objects.order_by('-user_rank').values_list('user_rank', flat=True)[0]
+        if not user_rank:
+            return GithubUser.UNRANK
 
         if user_rank == 1 or user_rank <= last_user_rank * 0.005:
             tier = GithubUser.CHALLENGER
