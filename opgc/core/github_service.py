@@ -147,8 +147,8 @@ class GithubInformationService:
     def get_tier_statistics(user_rank: int) -> int:
         """
             - 티어 통계
-            챌린저 1%
-            마스터 1~5%
+            챌린저 2%
+            마스터 2~5%
             다이아: 5~15%
             플래티넘 15~25%
             골드: 25~35%
@@ -161,9 +161,9 @@ class GithubInformationService:
         if not user_rank:
             return GithubUser.UNRANK
 
-        if user_rank == 1 or user_rank <= last_user_rank * 0.01:
+        if user_rank == 1 or user_rank <= last_user_rank * 0.02:
             tier = GithubUser.CHALLENGER
-        elif last_user_rank * 0.01 < user_rank <= last_user_rank * 0.05:
+        elif last_user_rank * 0.02 < user_rank <= last_user_rank * 0.05:
             tier = GithubUser.MASTER
         elif last_user_rank * 0.05 < user_rank <= last_user_rank * 0.15:
             tier = GithubUser.DIAMOND
