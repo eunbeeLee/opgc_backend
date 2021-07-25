@@ -4,12 +4,12 @@ from apps.githubs.models import GithubUser, Repository, UserOrganization, Organi
 
 
 class GithubUserAdmin(admin.ModelAdmin):
-    list_display = ('id', 'created', 'updated', 'username', 'name')
+    list_display = ('id', 'created', 'updated', 'username', 'name', 'total_score')
     list_display_links = ('id', )
     readonly_fields = ('id', 'created', 'updated')
     fields = ('id', 'created', 'updated', 'username', 'name', 'email', 'location', 'avatar_url',
               'total_contribution', 'total_stargazers_count', 'tier', 'user_rank', 'company',
-              'bio', 'blog', 'public_repos', 'followers', 'following', 'status', 'continuous_commit_day', )
+              'bio', 'blog', 'public_repos', 'followers', 'following', 'status', 'continuous_commit_day', 'total_score')
     list_per_page = 15
 
 
