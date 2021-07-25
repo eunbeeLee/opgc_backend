@@ -94,8 +94,8 @@ class RankService(object):
         for user in chunkator(github_user, 1000):
             # 동점자 제외
             user.user_rank = GithubUser.objects.filter(
-                continuous_commit_day__gt=user.continuous_commit_day
-            ).values('continuous_commit_day').annotate(Count('id')).count() + 1
+                total_score__gt=user.total_score
+            ).values('total_score').annotate(Count('id')).count() + 1
             user.save(update_fields=['user_rank'])
 
 

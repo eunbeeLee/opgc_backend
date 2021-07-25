@@ -12,7 +12,6 @@ from sentry_sdk import capture_exception
 
 from apps.githubs.models import GithubUser
 from core.github_dto import UserInformationDto
-from scripts.update_1day_1commit import get_tier_statistics
 from utils.exceptions import GitHubUserDoesNotExist, RateLimit, manage_api_call_fail, insert_queue
 from core.organization_service import OrganizationService
 from core.repository_service import RepositoryService
@@ -122,19 +121,62 @@ class GithubInformationService:
             업데이트 성공 처리
         """
         count = self.get_continuous_commit_day(self.github_user.username)
+        total_score = self.get_total_score(self.github_user)
 
         self.github_user.status = GithubUser.COMPLETED
         self.github_user.total_contribution = total_contribution
         self.github_user.total_stargazers_count = total_stargazers_count
         self.github_user.continuous_commit_day = count
-        self.github_user.tier = get_tier_statistics(count)
-        self.github_user.user_rank = self.update_user_ranking(count)
+        self.github_user.total_score = total_score
+        self.github_user.user_rank = self.update_user_ranking(total_score)
+        self.github_user.tier = self.get_tier_statistics(self.github_user.user_rank)
         self.github_user.save(update_fields=[
             'status', 'updated', 'total_contribution', 'total_stargazers_count',
             'tier', 'continuous_commit_day', 'user_rank'
         ])
 
         return self.github_user
+
+    @staticmethod
+    def get_total_score(github_user: GithubUser) -> int:
+        # 기여도 - 30%, 1일1커밋 - 45%, 팔로워 - 20%, 팔로잉 - 5%
+        return int(github_user.total_contribution * 0.3 + github_user.continuous_commit_day * 0.45
+                   + github_user.followers * 0.2 + github_user.following * 0.05)
+
+    @staticmethod
+    def get_tier_statistics(user_rank: int) -> int:
+        """
+            - 티어 통계
+            챌린저 0.5%
+            마스터 0.6~2%
+            다이아: 2.1~6%
+            플래티넘 6.1~10%
+            골드: 10.1~30%
+            실버: 30.1%~60%
+            브론즈: 60.1~95%
+            언랭: 95.1%~
+        """
+
+        last_user_rank = GithubUser.objects.order_by('-user_rank').values_list('user_rank', flat=True)[0]
+
+        if last_user_rank * 0.005 >= user_rank or user_rank == 1:
+            tier = GithubUser.CHALLENGER
+        elif last_user_rank * 0.005 < user_rank <= last_user_rank * 0.02:
+            tier = GithubUser.MASTER
+        elif last_user_rank * 0.02 < user_rank <= last_user_rank * 0.06:
+            tier = GithubUser.DIAMOND
+        elif last_user_rank * 0.06 < user_rank <= last_user_rank * 0.1:
+            tier = GithubUser.PLATINUM
+        elif last_user_rank * 0.1 < user_rank <= last_user_rank * 0.3:
+            tier = GithubUser.GOLD
+        elif last_user_rank * 0.3 < user_rank <= last_user_rank * 0.6:
+            tier = GithubUser.SILVER
+        elif last_user_rank * 0.6 < user_rank <= last_user_rank * 0.95:
+            tier = GithubUser.BRONZE
+        else:
+            tier = GithubUser.UNRANK
+
+        return tier
 
     @staticmethod
     def get_continuous_commit_day(username: str) -> int:
@@ -159,15 +201,13 @@ class GithubInformationService:
         return count
 
     @staticmethod
-    def update_user_ranking(count: int):
+    def update_user_ranking(total_score: int):
         """
         1일 1커밋 기준으로 전체 유저의 순위를 계산하는 함수
         """
         return GithubUser.objects.filter(
-            continuous_commit_day__gt=count
-        ).values(
-            'continuous_commit_day'
-        ).annotate(Count('id')).count() + 1
+            total_score__gt=total_score
+        ).values('total_score').annotate(Count('id')).count() + 1
 
     def update(self):
         # 0. Github API 호출 가능한지 체크
