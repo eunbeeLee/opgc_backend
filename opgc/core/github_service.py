@@ -132,7 +132,7 @@ class GithubInformationService:
         self.github_user.tier = self.get_tier_statistics(self.github_user.user_rank)
         self.github_user.save(update_fields=[
             'status', 'updated', 'total_contribution', 'total_stargazers_count',
-            'tier', 'continuous_commit_day', 'user_rank'
+            'tier', 'continuous_commit_day', 'user_rank', 'total_score'
         ])
 
         return self.github_user
@@ -159,7 +159,7 @@ class GithubInformationService:
 
         last_user_rank = GithubUser.objects.order_by('-user_rank').values_list('user_rank', flat=True)[0]
 
-        if last_user_rank * 0.005 >= user_rank or user_rank == 1:
+        if user_rank == 1 or user_rank <= last_user_rank * 0.005:
             tier = GithubUser.CHALLENGER
         elif last_user_rank * 0.005 < user_rank <= last_user_rank * 0.02:
             tier = GithubUser.MASTER
