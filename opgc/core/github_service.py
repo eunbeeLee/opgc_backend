@@ -139,9 +139,9 @@ class GithubInformationService:
 
     @staticmethod
     def get_total_score(github_user: GithubUser) -> int:
-        # 기여도 - 30%, 1일1커밋 - 45%, 팔로워 - 20%, 팔로잉 - 5%
-        return int(github_user.total_contribution * 0.3 + github_user.continuous_commit_day * 0.45
-                   + github_user.followers * 0.2 + github_user.following * 0.05)
+        # 기여도 - 30%, 1일1커밋 - 50%, 팔로워 - 15%, 팔로잉 - 5%
+        return int(github_user.total_contribution * 0.3 + github_user.continuous_commit_day * 0.5
+                   + github_user.followers * 0.15 + github_user.following * 0.05)
 
     @staticmethod
     def get_tier_statistics(user_rank: int) -> int:
