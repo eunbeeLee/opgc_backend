@@ -45,6 +45,12 @@ class TierOrderingPagination(BaseCursorPagination):
     ordering = ('-tier', '-continuous_commit_day')
 
 
+class ScoreOrderingPagination(BaseCursorPagination):
+    page_size = 10
+    max_page_size = 1000
+    ordering = ('-score',)
+
+
 class UserRankOrderingPagination(BaseCursorPagination):
     page_size = 10
     max_page_size = 1000
