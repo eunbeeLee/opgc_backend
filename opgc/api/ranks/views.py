@@ -1,7 +1,10 @@
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import mixins, viewsets, exceptions
 from rest_framework.response import Response
 
-from api.ranks.serializers import RankSerializer
+from api.paginations import UserRankOrderingPagination
+from api.ranks.serializers import RankSerializer, TierSerializer
+from apps.githubs.models import GithubUser
 from apps.ranks.models import UserRank
 
 
@@ -29,3 +32,15 @@ class RankViewSet(mixins.ListModelMixin,
         serializer = self.get_serializer(queryset, many=True)
 
         return Response(serializer.data)
+
+
+class OverallRankViewSet(mixins.ListModelMixin,
+                         viewsets.GenericViewSet):
+    """
+    - 종합순위 endpoint : ranks/overall/
+    """
+    queryset = GithubUser.objects.all()
+    serializer_class = TierSerializer
+    pagination_class = UserRankOrderingPagination
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['user_rank']

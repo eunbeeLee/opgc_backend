@@ -1,6 +1,7 @@
 
 from rest_framework import serializers
 
+from apps.githubs.models import GithubUser
 from apps.ranks.models import UserRank
 
 
@@ -22,3 +23,12 @@ class RankSerializer(serializers.ModelSerializer):
             ret['github_user'] = None
 
         return ret
+
+
+class TierSerializer(serializers.ModelSerializer):
+    tier = serializers.CharField(source='get_tier_display')
+
+    class Meta:
+        model = GithubUser
+        fields = ('id', 'username', 'name', 'avatar_url', 'tier', 'user_rank', 'company', 'bio',
+                  'continuous_commit_day')
