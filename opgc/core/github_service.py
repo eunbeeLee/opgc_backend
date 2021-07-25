@@ -20,6 +20,7 @@ from utils.slack import slack_notify_new_user
 
 FURL = furl('https://api.github.com/')
 GITHUB_RATE_LIMIT_URL = 'https://api.github.com/rate_limit'
+PER_PAGE = 50
 CHECK_RATE_REMAIN = 100
 USER_UPDATE_FIELDS = [
     'avatar_url', 'company', 'bio', 'blog', 'public_repos', 'followers', 'following','name', 'email', 'location'
@@ -179,13 +180,19 @@ class GithubInformationService:
         self.github_user: GithubUser = self.get_or_create_github_user(user_information)
 
         # 2. User의 repository 정보를 가져온다
-        repo_res = requests.get(user_information.repos_url, headers=settings.GITHUB_API_HEADER)
-        repo_service = RepositoryService(github_user=self.github_user)
-        try:
-            for repository_data in json.loads(repo_res.content):
-                repository_dto = repo_service.create_dto(repository_data)
-                repo_service.repositories.append(repository_dto)
+        params = {'per_page': PER_PAGE, 'page': 1}
+        repositories = []
+        for i in range(0, (self.github_user.public_repos // PER_PAGE) + 1):
+            params['page'] = i + 1
+            repo_res = requests.get(user_information.repos_url, headers=settings.GITHUB_API_HEADER, params=params)
+            repositories.extend(json.loads(repo_res.content))
 
+        repo_service = RepositoryService(github_user=self.github_user)
+
+        try:
+            for repository in repositories:
+                repository_dto = repo_service.create_dto(repository)
+                repo_service.repositories.append(repository_dto)
         except json.JSONDecodeError:
             pass
 
