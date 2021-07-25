@@ -60,8 +60,10 @@ class RankService(object):
         with transaction.atomic():
             # 최대 10개라 all()로 그냥 가져옴 todo: user가 많아지면 100개로 늘릴예정
             for order, data in enumerate(github_user_data):
-                UserRank.objects.filter(type=_type, ranking=order+1).invalidated_update(
-                    github_user_id=data.get('id'), score=data.get(_type))
+                user_rank, is_created = UserRank.objects.get_or_create(type=_type, ranking=order+1)
+                user_rank.github_user_id = data.get('id')
+                user_rank.score = data.get(_type)
+                user_rank.save(update_fields=['github_user_id', 'score'])
 
     @staticmethod
     def update_language_rank():
