@@ -147,31 +147,31 @@ class GithubInformationService:
     def get_tier_statistics(user_rank: int) -> int:
         """
             - 티어 통계
-            챌린저 0.5%
-            마스터 0.6~2%
-            다이아: 2.1~6%
-            플래티넘 6.1~10%
-            골드: 10.1~30%
-            실버: 30.1%~60%
-            브론즈: 60.1~95%
-            언랭: 95.1%~
+            챌린저 1%
+            마스터 1~5%
+            다이아: 5~15%
+            플래티넘 15~25%
+            골드: 25~35%
+            실버: 35%~60%
+            브론즈: 60~95%
+            언랭: 95.%~
         """
 
         last_user_rank = GithubUser.objects.order_by('-user_rank').values_list('user_rank', flat=True)[0]
         if not user_rank:
             return GithubUser.UNRANK
 
-        if user_rank == 1 or user_rank <= last_user_rank * 0.005:
+        if user_rank == 1 or user_rank <= last_user_rank * 0.01:
             tier = GithubUser.CHALLENGER
-        elif last_user_rank * 0.005 < user_rank <= last_user_rank * 0.02:
+        elif last_user_rank * 0.01 < user_rank <= last_user_rank * 0.05:
             tier = GithubUser.MASTER
-        elif last_user_rank * 0.02 < user_rank <= last_user_rank * 0.06:
+        elif last_user_rank * 0.05 < user_rank <= last_user_rank * 0.15:
             tier = GithubUser.DIAMOND
-        elif last_user_rank * 0.06 < user_rank <= last_user_rank * 0.1:
+        elif last_user_rank * 0.15 < user_rank <= last_user_rank * 0.25:
             tier = GithubUser.PLATINUM
-        elif last_user_rank * 0.1 < user_rank <= last_user_rank * 0.3:
+        elif last_user_rank * 0.25 < user_rank <= last_user_rank * 0.35:
             tier = GithubUser.GOLD
-        elif last_user_rank * 0.3 < user_rank <= last_user_rank * 0.6:
+        elif last_user_rank * 0.35 < user_rank <= last_user_rank * 0.6:
             tier = GithubUser.SILVER
         elif last_user_rank * 0.6 < user_rank <= last_user_rank * 0.95:
             tier = GithubUser.BRONZE
