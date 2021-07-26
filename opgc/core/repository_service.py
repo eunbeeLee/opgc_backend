@@ -61,6 +61,8 @@ class RepositoryService:
         res = requests.get(repository.contributors_url, headers=settings.GITHUB_API_HEADER)
         if res.status_code != 200:
             manage_api_call_fail(self.github_user, res.status_code)
+            # todo: 임시, 한번에 깃헙 api 호출 오류 처리 가능하도록 수정해야함
+            return 0, None
 
         try:
             contributors = json.loads(res.content)
