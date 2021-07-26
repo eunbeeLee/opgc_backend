@@ -2,7 +2,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import mixins, viewsets, exceptions
 from rest_framework.response import Response
 
-from api.paginations import UserRankOrderingPagination, ScoreOrderingPagination
+from api.paginations import UserRankOrderingPagination, ScoreOrderingPagination, TotalScorePagination
 from api.ranks.serializers import RankSerializer, TierSerializer
 from apps.githubs.models import GithubUser
 from apps.ranks.models import UserRank
@@ -42,6 +42,4 @@ class OverallRankViewSet(mixins.ListModelMixin,
     """
     queryset = GithubUser.objects.all()
     serializer_class = TierSerializer
-    pagination_class = UserRankOrderingPagination
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['user_rank']
+    pagination_class = TotalScorePagination
