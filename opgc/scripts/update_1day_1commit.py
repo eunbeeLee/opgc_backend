@@ -12,33 +12,6 @@ from apps.githubs.models import GithubUser
 from utils.slack import slack_update_1day_1commit
 
 
-def get_tier_statistics(commit_count: int) -> int:
-    """
-        - 티어 통계
-        일단은 1일 1커밋을 기준으로만 티어를 정하도록 함.
-        todo : 추후에 여러가지 조건들의 비율을 정해서 디밸롭하기!
-    """
-
-    if commit_count == 0:
-        tier = GithubUser.UNRANK
-    elif 1 <= commit_count < 10:
-        tier = GithubUser.BRONZE
-    elif 10 <= commit_count < 20:
-        tier = GithubUser.SILVER
-    elif 20 <= commit_count < 30:
-        tier = GithubUser.GOLD
-    elif 30 <= commit_count < 90:
-        tier = GithubUser.PLATINUM
-    elif 90 <= commit_count < 180:
-        tier = GithubUser.DIAMOND
-    elif 180 <= commit_count < 300:
-        tier = GithubUser.MASTER
-    else:
-        tier = GithubUser.CHALLENGER
-
-    return tier
-
-
 async def check_1day_1commit(github_user: GithubUser):
     """
         1일 1커밋 크롤링으로 업데이트
@@ -63,8 +36,7 @@ async def check_1day_1commit(github_user: GithubUser):
 
     #print(f'{github_user.username}: {count}')
     github_user.continuous_commit_day = count
-    github_user.tier = get_tier_statistics(count)
-    github_user.save(update_fields=['continuous_commit_day', 'tier'])
+    github_user.save(update_fields=['continuous_commit_day'])
     time.sleep(0.1)  # 429 에러 때문에 약간의 sleep 을 준다.
 
 

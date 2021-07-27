@@ -33,13 +33,31 @@ class IdOrderingPagination(BaseCursorPagination):
     ordering = 'id'
 
 
+class DescIdOrderingPagination(BaseCursorPagination):
+    page_size = 10
+    max_page_size = 1000
+    ordering = '-id'
+
+
 class TierOrderingPagination(BaseCursorPagination):
     page_size = 10
     max_page_size = 1000
     ordering = ('-tier', '-continuous_commit_day')
 
 
+class ScoreOrderingPagination(BaseCursorPagination):
+    page_size = 10
+    max_page_size = 1000
+    ordering = ('-score',)
+
+
 class UserRankOrderingPagination(BaseCursorPagination):
     page_size = 10
     max_page_size = 1000
     ordering = ('user_rank')
+
+
+class TotalScorePagination(BaseCursorPagination):
+    page_size = 10
+    max_page_size = 1000
+    ordering = ('-total_score')

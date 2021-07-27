@@ -60,12 +60,3 @@ class LanguageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Language
         fields = ('id', 'type')
-
-
-class TierSerializer(serializers.ModelSerializer):
-    tier = serializers.CharField(source='get_tier_display')
-
-    class Meta:
-        model = GithubUser
-        fields = ('id', 'username', 'name', 'avatar_url', 'tier', 'user_rank', 'company', 'bio',
-                  'continuous_commit_day')

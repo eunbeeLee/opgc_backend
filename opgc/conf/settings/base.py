@@ -1,3 +1,7 @@
+# 배포 버전
+RELEASE_VERSION = '2021.7.20'
+
+
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -13,6 +17,7 @@ INSTALLED_APPS = [
     'apps.githubs',
     'apps.reservations',
     'apps.ranks',
+    'apps.notices',
 
     'corsheaders'
 ]

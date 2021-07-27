@@ -1,6 +1,7 @@
 
 from rest_framework import serializers
 
+from apps.githubs.models import GithubUser
 from apps.ranks.models import UserRank
 
 
@@ -22,3 +23,13 @@ class RankSerializer(serializers.ModelSerializer):
             ret['github_user'] = None
 
         return ret
+
+
+class TierSerializer(serializers.ModelSerializer):
+    tier = serializers.CharField(source='get_tier_display')
+    continuous_commit_day = serializers.IntegerField(source='total_score')  # todo: 프론트 api 변경전 임시로
+
+    class Meta:
+        model = GithubUser
+        fields = ('id', 'username', 'name', 'avatar_url', 'tier', 'user_rank', 'company', 'bio',
+                  'continuous_commit_day', 'total_score', 'following', 'followers', 'total_contribution',)
