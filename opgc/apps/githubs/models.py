@@ -42,6 +42,7 @@ class GithubUser(CustomBaseModel):
     following = models.IntegerField(default=0, blank=True)
     status = models.SmallIntegerField(choices=UPDATING_STATUS, default=NONE, blank=False)
     continuous_commit_day = models.IntegerField(default=0)  # 1일 1커밋 지속 날짜 카운트
+    total_score = models.IntegerField(default=0, blank=True)  # 종합 스코어
 
 
 class Language(CustomBaseModel):

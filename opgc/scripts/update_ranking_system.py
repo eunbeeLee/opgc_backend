@@ -60,8 +60,10 @@ class RankService(object):
         with transaction.atomic():
             # 최대 10개라 all()로 그냥 가져옴 todo: user가 많아지면 100개로 늘릴예정
             for order, data in enumerate(github_user_data):
-                UserRank.objects.filter(type=_type, ranking=order+1).invalidated_update(
-                    github_user_id=data.get('id'), score=data.get(_type))
+                user_rank, is_created = UserRank.objects.get_or_create(type=_type, ranking=order+1)
+                user_rank.github_user_id = data.get('id')
+                user_rank.score = data.get(_type)
+                user_rank.save(update_fields=['github_user_id', 'score'])
 
     @staticmethod
     def update_language_rank():
@@ -77,13 +79,10 @@ class RankService(object):
             # 랭킹 업데이트 도중 하나라도 오류가 나면 원상복구
             with transaction.atomic():
                 for order, user_language in enumerate(user_languages):
-                    UserRank.objects.filter(
-                        type=f'lang-{language.type}',
-                        ranking=order+1
-                    ).invalidated_update(
-                        github_user_id=user_language.github_user_id,
-                        score=user_language.number
-                    )
+                    user_rank, is_created = UserRank.objects.get_or_create(type=f'lang-{language.type}', ranking=order+1)
+                    user_rank.github_user_id = user_language.github_user_id
+                    user_rank.score = user_language.number
+                    user_rank.save(update_fields=['github_user_id', 'score'])
 
     @staticmethod
     def update_user_ranking():
@@ -94,8 +93,8 @@ class RankService(object):
         for user in chunkator(github_user, 1000):
             # 동점자 제외
             user.user_rank = GithubUser.objects.filter(
-                continuous_commit_day__gt=user.continuous_commit_day
-            ).values('continuous_commit_day').annotate(Count('id')).count() + 1
+                total_score__gt=user.total_score
+            ).values('total_score').annotate(Count('id')).count() + 1
             user.save(update_fields=['user_rank'])
 
 
