@@ -20,9 +20,9 @@ from utils.slack import slack_notify_new_user
 FURL = furl('https://api.github.com/')
 GITHUB_RATE_LIMIT_URL = 'https://api.github.com/rate_limit'
 PER_PAGE = 50
-CHECK_RATE_REMAIN = 100
+CHECK_RATE_REMAIN = 0
 USER_UPDATE_FIELDS = [
-    'avatar_url', 'company', 'bio', 'blog', 'public_repos', 'followers', 'following','name', 'email', 'location'
+    'avatar_url', 'company', 'bio', 'blog', 'public_repos', 'followers', 'following', 'name', 'email', 'location'
 ]
 
 
@@ -106,7 +106,7 @@ class GithubInformationService:
             content = json.loads(res.content)
             remaining = content['rate']['remaining']
 
-            if remaining < CHECK_RATE_REMAIN:
+            if remaining <= CHECK_RATE_REMAIN:
                 if not self.is_30_min_script:
                     insert_queue(self.username)
                 raise RateLimit()
