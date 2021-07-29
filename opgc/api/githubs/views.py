@@ -5,9 +5,9 @@ from rest_framework import viewsets, mixins, exceptions
 from rest_framework.response import Response
 
 from api.exceptions import NotExistsGithubUser, RateLimitGithubAPI
-from api.githubs.serializers import GithubUserSerializer, OrganizationSerializer, RepositorySerializer, \
-    LanguageSerializer
-from api.paginations import IdOrderingPagination, TierOrderingPagination
+from api.githubs.serializers import OrganizationSerializer, RepositorySerializer, LanguageSerializer, \
+    GithubUserListSerializer
+from api.paginations import IdOrderingPagination, TierOrderingPagination, TotalScorePagination, DescIdOrderingPagination
 from api.ranks.serializers import TierSerializer
 from apps.githubs.models import GithubUser, Organization, Repository, Language
 from utils.exceptions import GitHubUserDoesNotExist, RateLimit
@@ -16,13 +16,15 @@ from core.github_service import GithubInformationService
 
 class GithubUserViewSet(mixins.UpdateModelMixin,
                         mixins.RetrieveModelMixin,
+                        mixins.ListModelMixin,
                         viewsets.GenericViewSet):
     """
     endpoint : githubs/users/:username
     """
 
-    queryset = GithubUser.objects.prefetch_related('organization', 'repository').all()
-    serializer_class = GithubUserSerializer
+    queryset = GithubUser.objects.prefetch_related('organization', 'repository', 'language').all()
+    serializer_class = GithubUserListSerializer
+    pagination_class = TotalScorePagination
     lookup_url_kwarg = 'username'
 
     def retrieve(self, request, *args, **kwargs):
@@ -99,6 +101,7 @@ class RepositoryViewSet(mixins.ListModelMixin,
 
     queryset = Repository.objects.all()
     serializer_class = RepositorySerializer
+    pagination_class = DescIdOrderingPagination
     lookup_url_kwarg = 'user_pk'
 
     def get_queryset(self):
@@ -106,12 +109,6 @@ class RepositoryViewSet(mixins.ListModelMixin,
         repositories = Repository.objects.filter(github_user_id=user_pk)
 
         return repositories
-
-    def list(self, request, *args, **kwargs):
-        repositories = self.get_queryset()
-        serializer = self.serializer_class(repositories, many=True)
-
-        return Response(serializer.data)
 
 
 class LanguageViewSet(mixins.ListModelMixin,
