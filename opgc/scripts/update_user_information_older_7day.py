@@ -4,14 +4,29 @@
 """
 import concurrent.futures
 import timeit
+from dataclasses import asdict
 from datetime import datetime, timedelta
 
 from chunkator import chunkator
 
 from apps.githubs.models import GithubUser
-from utils.exceptions import RateLimit, insert_queue
-from core.github_service import GithubInformationService
+from core.github_dto import UserInformationDto
+from utils.exceptions import RateLimit, insert_queue, GitHubUserDoesNotExist
+from core.github_service import GithubInformationService, USER_UPDATE_FIELDS
 from utils.slack import slack_notify_update_fail, slack_update_older_week_user
+
+
+def update_github_basic_information(github_user: GithubUser, user_information: UserInformationDto):
+    update_fields = []
+
+    for key, value in asdict(user_information).items():
+        if key in USER_UPDATE_FIELDS:
+            if getattr(github_user, key, '') != value:
+                setattr(github_user, key, value)
+                update_fields.append(key)
+
+    if update_fields:
+        github_user.save(update_fields=update_fields)
 
 
 def run():
@@ -44,7 +59,9 @@ def run():
 
             try:
                 github_information_service = GithubInformationService(github_user.username)
-                executor.submit(github_information_service.update)
+                user_information = github_information_service.check_github_user()
+                # 모든 정보를 업데이트 하지 않고, 유저의 기본정보만 업데이트 한다.
+                executor.submit(update_github_basic_information, github_user, user_information)
                 update_user_count += 1
 
             except RateLimit:  # rate limit면 다른 유저들도 업데이드 못함
@@ -52,6 +69,9 @@ def run():
                     message=f'Rate Limit 로 인해 업데이트가 실패되었습니다. {update_user_count}명만 업데이트 되었습니다.😭'
                 )
                 is_rate_limit = True
+
+            except GitHubUserDoesNotExist:
+                continue
 
     remaining = rate_limit_check_service.check_rete_limit()
     terminate_time = timeit.default_timer()  # 종료 시간 체크

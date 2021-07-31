@@ -143,6 +143,7 @@ class TierRankViewSet(mixins.ListModelMixin,
                       viewsets.GenericViewSet):
     """
     endpoint : githubs/tier/
+    todo: 곧 삭제 예정인 API
     """
 
     queryset = GithubUser.objects.all()
