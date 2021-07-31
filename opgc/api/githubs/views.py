@@ -27,6 +27,21 @@ class GithubUserViewSet(mixins.UpdateModelMixin,
     pagination_class = TotalScorePagination
     lookup_url_kwarg = 'username'
 
+    def get_queryset(self):
+        data = self.request.GET
+        queryset = self.queryset
+
+        if data.get('company'):
+            queryset = queryset.filter(company__icontains=data.get('company'))
+
+        if data.get('username'):
+            queryset = queryset.filter(username__icontains=data.get('username'))
+
+        if data.get('tier'):
+            queryset = queryset.filter(tier=data.get('tier'))
+
+        return queryset
+
     def retrieve(self, request, *args, **kwargs):
         self.serializer_class = GithubUserSerializer
         username = self.kwargs.get(self.lookup_url_kwarg)
@@ -46,7 +61,7 @@ class GithubUserViewSet(mixins.UpdateModelMixin,
         serializer = self.serializer_class(github_user)
         return Response(serializer.data)
 
-    def update(self, request, *args, **kwargs): 
+    def update(self, request, *args, **kwargs):
         self.serializer_class = GithubUserSerializer
         username = self.kwargs.get(self.lookup_url_kwarg)
 
