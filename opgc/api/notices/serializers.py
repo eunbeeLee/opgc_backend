@@ -14,4 +14,4 @@ class NoticeListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Notice
-        fields = ['id', 'created', 'updated', 'title']
+        fields = ['id', 'created', 'updated', 'title', 'content']
