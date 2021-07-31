@@ -1,5 +1,5 @@
 # 배포 버전
-RELEASE_VERSION = '2021.7.20'
+RELEASE_VERSION = '2021.7.31'
 
 
 # Application definition
