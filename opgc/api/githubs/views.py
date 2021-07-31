@@ -6,7 +6,7 @@ from rest_framework.response import Response
 
 from api.exceptions import NotExistsGithubUser, RateLimitGithubAPI
 from api.githubs.serializers import OrganizationSerializer, RepositorySerializer, LanguageSerializer, \
-    GithubUserListSerializer
+    GithubUserListSerializer, GithubUserSerializer
 from api.paginations import IdOrderingPagination, TierOrderingPagination, TotalScorePagination, DescIdOrderingPagination
 from api.ranks.serializers import TierSerializer
 from apps.githubs.models import GithubUser, Organization, Repository, Language
@@ -28,6 +28,7 @@ class GithubUserViewSet(mixins.UpdateModelMixin,
     lookup_url_kwarg = 'username'
 
     def retrieve(self, request, *args, **kwargs):
+        self.serializer_class = GithubUserSerializer
         username = self.kwargs.get(self.lookup_url_kwarg)
         github_user = self.get_queryset().filter(username=username).first()
 
@@ -45,7 +46,8 @@ class GithubUserViewSet(mixins.UpdateModelMixin,
         serializer = self.serializer_class(github_user)
         return Response(serializer.data)
 
-    def update(self, request, *args, **kwargs):
+    def update(self, request, *args, **kwargs): 
+        self.serializer_class = GithubUserSerializer
         username = self.kwargs.get(self.lookup_url_kwarg)
 
         try:
