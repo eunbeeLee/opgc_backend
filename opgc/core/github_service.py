@@ -232,7 +232,12 @@ class GithubInformationService:
         repo_service = RepositoryService(github_user=self.github_user)
 
         try:
-            for repository in repositories:
+            # todo: 레포지토리가 너무 많은경우 한번 프로세스에 async 로 처리하는데 서버 성능이 못따라감.
+            #       일단 250개 미만으로 업데이트 하고, 이 부분에 대해서 고민해보기 (일단 리포팅만)
+            if len(repositories) > 250:
+                capture_exception(Exception(f'[Over Repo] {self.github_user.username} - count : {len(repositories)}'))
+
+            for repository in repositories[:250]:
                 repository_dto = repo_service.create_dto(repository)
                 repo_service.repositories.append(repository_dto)
         except json.JSONDecodeError:
