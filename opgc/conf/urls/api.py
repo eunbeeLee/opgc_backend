@@ -5,4 +5,5 @@ urlpatterns = [
     path('githubs/', include('api.githubs.urls')),
     path('ranks/', include('api.ranks.urls')),
     path('notices/', include('api.notices.urls')),
+    path('profiles/', include('api.profiles.urls')),
 ]
