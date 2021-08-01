@@ -1,9 +1,9 @@
+from django.conf import settings
 from django.http import FileResponse, Http404
 from django.views import View
 from html2image import Html2Image
 
 from apps.githubs.models import GithubUser
-from conf.settings.local import PROFILE_IMAGE_DIR
 
 
 class UserProfileView(View):
@@ -71,10 +71,10 @@ class UserProfileView(View):
             }
         """
 
-        hti = Html2Image(output_path=PROFILE_IMAGE_DIR)
+        hti = Html2Image(output_path=settings.PROFILE_IMAGE_DIR)
         hti.screenshot(html_str=html, css_str=css, save_as=f'{username}.png', size=(320, 160))
 
-        img = open(f'{PROFILE_IMAGE_DIR}/{username}.png', 'rb')
+        img = open(f'{settings.PROFILE_IMAGE_DIR}/{username}.png', 'rb')
         response = FileResponse(img)
 
         return response
