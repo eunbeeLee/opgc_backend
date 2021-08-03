@@ -206,7 +206,7 @@ class GithubInformationService:
     @staticmethod
     def update_user_ranking(total_score: int):
         """
-        1일 1커밋 기준으로 전체 유저의 순위를 계산하는 함수
+        total score 로 전체 유저의 순위를 계산하는 함수
         """
         return GithubUser.objects.filter(
             total_score__gt=total_score

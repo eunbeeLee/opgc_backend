@@ -16,6 +16,7 @@ from utils.slack import slack_notify_update_fail, slack_update_older_week_user
 
 
 def update_github_basic_information(github_user: GithubUser):
+    # todo: 유틸쪽으로 분리하기 
     github_information_service = GithubInformationService(github_user.username)
     user_information = github_information_service.check_github_user()
 

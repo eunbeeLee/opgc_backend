@@ -9,6 +9,8 @@ from django.db.models import Count
 
 from apps.githubs.models import GithubUser, Language, UserLanguage
 from apps.ranks.models import UserRank
+from core.github_service import GithubInformationService
+from scripts.update_user_information_older_7day import update_github_basic_information
 from utils.slack import slack_update_ranking_system
 
 # todo : 이거 수정하기 (원래 필드 : 모델 이런형태로 하려고 했는데 그렇게 안씀)
@@ -91,11 +93,7 @@ class RankService(object):
         """
         github_user = GithubUser.objects.all()
         for user in chunkator(github_user, 1000):
-            # 동점자 제외
-            user.user_rank = GithubUser.objects.filter(
-                total_score__gt=user.total_score
-            ).values('total_score').annotate(Count('id')).count() + 1
-            user.save(update_fields=['user_rank'])
+            update_github_basic_information(user)
 
 
 def run():
