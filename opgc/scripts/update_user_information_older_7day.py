@@ -16,7 +16,7 @@ from utils.slack import slack_notify_update_fail, slack_update_older_week_user
 
 
 def update_github_basic_information(github_user: GithubUser):
-    # todo: 유틸쪽으로 분리하기 
+    # todo: 유틸쪽으로 분리하기
     github_information_service = GithubInformationService(github_user.username)
     user_information = github_information_service.check_github_user()
 
@@ -29,7 +29,6 @@ def update_github_basic_information(github_user: GithubUser):
     github_user.total_score = github_information_service.get_total_score(github_user)
     github_user.user_rank = github_information_service.update_user_ranking(github_user.total_score)
     github_user.tier = github_information_service.get_tier_statistics(github_user.user_rank)
-
     github_user.save()
 
 

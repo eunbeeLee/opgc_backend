@@ -241,6 +241,7 @@ class GithubInformationService:
             for repository in repositories[:250]:
                 repository_dto = repo_service.create_dto(repository)
                 repo_service.repositories.append(repository_dto)
+
         except json.JSONDecodeError:
             pass
 

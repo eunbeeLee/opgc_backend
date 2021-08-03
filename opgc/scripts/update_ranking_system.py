@@ -92,10 +92,15 @@ class RankService(object):
         """
         total score 로 전체 유저의 순위를 계산하는 함수
         """
-        github_user = GithubUser.objects.all()
-        for user in chunkator(github_user, 1000):
+        github_users = GithubUser.objects.all()
+        for github_user in chunkator(github_users, 1000):
             try:
-                update_github_basic_information(user)
+                github_information_service = GithubInformationService(github_user.username)
+                github_user.total_score = github_information_service.get_total_score(github_user)
+                github_user.user_rank = github_information_service.update_user_ranking(github_user.total_score)
+                github_user.tier = github_information_service.get_tier_statistics(github_user.user_rank)
+                github_user.save(update_fields=['total_score', 'user_rank', 'tier'])
+
             except GitHubUserDoesNotExist:
                 continue
 
