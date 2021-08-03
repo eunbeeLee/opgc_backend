@@ -11,6 +11,7 @@ from apps.githubs.models import GithubUser, Language, UserLanguage
 from apps.ranks.models import UserRank
 from core.github_service import GithubInformationService
 from scripts.update_user_information_older_7day import update_github_basic_information
+from utils.exceptions import GitHubUserDoesNotExist
 from utils.slack import slack_update_ranking_system
 
 # todo : 이거 수정하기 (원래 필드 : 모델 이런형태로 하려고 했는데 그렇게 안씀)
@@ -89,11 +90,14 @@ class RankService(object):
     @staticmethod
     def update_user_ranking():
         """
-        1일 1커밋 기준으로 전체 유저의 순위를 계산하는 함수
+        total score 로 전체 유저의 순위를 계산하는 함수
         """
         github_user = GithubUser.objects.all()
         for user in chunkator(github_user, 1000):
-            update_github_basic_information(user)
+            try:
+                update_github_basic_information(user)
+            except GitHubUserDoesNotExist:
+                continue
 
 
 def run():
