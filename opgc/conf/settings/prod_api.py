@@ -139,6 +139,8 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
 
+PROFILE_IMAGE_DIR = 'PROFILE_IMAGE_PROD_PATH'
+
 # CKEditor
 CKEDITOR_UPLOAD_PATH = 'uploads/'
 CKEDITOR_CONFIGS = {

@@ -10,23 +10,26 @@ from datetime import datetime, timedelta
 from chunkator import chunkator
 
 from apps.githubs.models import GithubUser
-from core.github_dto import UserInformationDto
 from utils.exceptions import RateLimit, insert_queue, GitHubUserDoesNotExist
 from core.github_service import GithubInformationService, USER_UPDATE_FIELDS
 from utils.slack import slack_notify_update_fail, slack_update_older_week_user
 
 
-def update_github_basic_information(github_user: GithubUser, user_information: UserInformationDto):
-    update_fields = []
+def update_github_basic_information(github_user: GithubUser):
+    # todo: 유틸쪽으로 분리하기
+    github_information_service = GithubInformationService(github_user.username)
+    user_information = github_information_service.check_github_user()
 
     for key, value in asdict(user_information).items():
         if key in USER_UPDATE_FIELDS:
             if getattr(github_user, key, '') != value:
                 setattr(github_user, key, value)
-                update_fields.append(key)
 
-    if update_fields:
-        github_user.save(update_fields=update_fields)
+    github_user.continuous_commit_day = github_information_service.get_continuous_commit_day(github_user.username)
+    github_user.total_score = github_information_service.get_total_score(github_user)
+    github_user.user_rank = github_information_service.update_user_ranking(github_user.total_score)
+    github_user.tier = github_information_service.get_tier_statistics(github_user.user_rank)
+    github_user.save()
 
 
 def run():
@@ -58,10 +61,8 @@ def run():
                 continue
 
             try:
-                github_information_service = GithubInformationService(github_user.username)
-                user_information = github_information_service.check_github_user()
                 # 모든 정보를 업데이트 하지 않고, 유저의 기본정보만 업데이트 한다.
-                executor.submit(update_github_basic_information, github_user, user_information)
+                executor.submit(update_github_basic_information, github_user)
                 update_user_count += 1
 
             except RateLimit:  # rate limit면 다른 유저들도 업데이드 못함

@@ -121,12 +121,13 @@ class GithubInformationService:
             업데이트 성공 처리
         """
         count = self.get_continuous_commit_day(self.github_user.username)
-        total_score = self.get_total_score(self.github_user)
 
         self.github_user.status = GithubUser.COMPLETED
         self.github_user.total_contribution = total_contribution
         self.github_user.total_stargazers_count = total_stargazers_count
         self.github_user.continuous_commit_day = count
+
+        total_score = self.get_total_score(self.github_user)
         self.github_user.total_score = total_score
         self.github_user.user_rank = self.update_user_ranking(total_score)
         self.github_user.tier = self.get_tier_statistics(self.github_user.user_rank)
@@ -205,7 +206,7 @@ class GithubInformationService:
     @staticmethod
     def update_user_ranking(total_score: int):
         """
-        1일 1커밋 기준으로 전체 유저의 순위를 계산하는 함수
+        total score 로 전체 유저의 순위를 계산하는 함수
         """
         return GithubUser.objects.filter(
             total_score__gt=total_score
@@ -240,6 +241,7 @@ class GithubInformationService:
             for repository in repositories[:250]:
                 repository_dto = repo_service.create_dto(repository)
                 repo_service.repositories.append(repository_dto)
+
         except json.JSONDecodeError:
             pass
 

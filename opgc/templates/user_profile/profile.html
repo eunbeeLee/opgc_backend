@@ -1,0 +1,21 @@
+{% load static %}
+
+<link rel="stylesheet" type="text/css" href="{% static 'github_profile/css/base.css' %}">
+
+<div class="profile-base">
+    <div class="rank">
+        <img src="https://www.opgc.me/assets/imgs/tier-{{ github_user.get_tier_display.lower }}.png" width="100" height="100">
+    </div>
+    <div class="inform">
+        <ul>
+            <li>
+                <a class="opgc-link" href="https://www.opgc.me/#/users/{{ github_user.username }}" target="_black">
+                    <strong>My OPGC Profile</strong>
+                </a>
+            </li>
+            <li>🏆&nbsp;&nbsp;Rank: {{ github_user.user_rank }}</li>
+            <li>📈&nbsp;&nbsp;Total Score: {{ github_user.total_score }}</li>
+            <li>🌱&nbsp;&nbsp;1day 1commit: {{ github_user.continuous_commit_day }}</li>
+        </ul>
+    </div>
+</div>
