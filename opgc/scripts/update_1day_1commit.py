@@ -12,7 +12,7 @@ async def update_continuous_commit_day(github_user: GithubUser):
     """
         1일 1커밋 크롤링으로 업데이트
     """
-    if not is_exists_github_users:
+    if not is_exists_github_users(github_user.username):
         return
 
     is_completed, continuous_count = get_continuous_commit_day(github_user.username)
