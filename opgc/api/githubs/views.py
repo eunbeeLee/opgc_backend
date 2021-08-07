@@ -5,9 +5,9 @@ from rest_framework import viewsets, mixins, exceptions
 from rest_framework.response import Response
 
 from api.exceptions import NotExistsGithubUser, RateLimitGithubAPI
-from api.githubs.serializers import GithubUserSerializer, OrganizationSerializer, RepositorySerializer, \
-    LanguageSerializer
-from api.paginations import IdOrderingPagination, TierOrderingPagination
+from api.githubs.serializers import OrganizationSerializer, RepositorySerializer, LanguageSerializer, \
+    GithubUserListSerializer, GithubUserSerializer
+from api.paginations import IdOrderingPagination, TierOrderingPagination, TotalScorePagination, DescIdOrderingPagination
 from api.ranks.serializers import TierSerializer
 from apps.githubs.models import GithubUser, Organization, Repository, Language
 from utils.exceptions import GitHubUserDoesNotExist, RateLimit
@@ -16,16 +16,34 @@ from core.github_service import GithubInformationService
 
 class GithubUserViewSet(mixins.UpdateModelMixin,
                         mixins.RetrieveModelMixin,
+                        mixins.ListModelMixin,
                         viewsets.GenericViewSet):
     """
     endpoint : githubs/users/:username
     """
 
-    queryset = GithubUser.objects.prefetch_related('organization', 'repository').all()
-    serializer_class = GithubUserSerializer
+    queryset = GithubUser.objects.prefetch_related('organization', 'repository', 'language').all()
+    serializer_class = GithubUserListSerializer
+    pagination_class = TotalScorePagination
     lookup_url_kwarg = 'username'
 
+    def get_queryset(self):
+        data = self.request.GET
+        queryset = self.queryset
+
+        if data.get('company'):
+            queryset = queryset.filter(company__icontains=data.get('company'))
+
+        if data.get('username'):
+            queryset = queryset.filter(username__icontains=data.get('username'))
+
+        if data.get('tier'):
+            queryset = queryset.filter(tier=data.get('tier'))
+
+        return queryset
+
     def retrieve(self, request, *args, **kwargs):
+        self.serializer_class = GithubUserSerializer
         username = self.kwargs.get(self.lookup_url_kwarg)
         github_user = self.get_queryset().filter(username=username).first()
 
@@ -44,6 +62,7 @@ class GithubUserViewSet(mixins.UpdateModelMixin,
         return Response(serializer.data)
 
     def update(self, request, *args, **kwargs):
+        self.serializer_class = GithubUserSerializer
         username = self.kwargs.get(self.lookup_url_kwarg)
 
         try:
@@ -99,6 +118,7 @@ class RepositoryViewSet(mixins.ListModelMixin,
 
     queryset = Repository.objects.all()
     serializer_class = RepositorySerializer
+    pagination_class = DescIdOrderingPagination
     lookup_url_kwarg = 'user_pk'
 
     def get_queryset(self):
@@ -106,12 +126,6 @@ class RepositoryViewSet(mixins.ListModelMixin,
         repositories = Repository.objects.filter(github_user_id=user_pk)
 
         return repositories
-
-    def list(self, request, *args, **kwargs):
-        repositories = self.get_queryset()
-        serializer = self.serializer_class(repositories, many=True)
-
-        return Response(serializer.data)
 
 
 class LanguageViewSet(mixins.ListModelMixin,
@@ -129,6 +143,7 @@ class TierRankViewSet(mixins.ListModelMixin,
                       viewsets.GenericViewSet):
     """
     endpoint : githubs/tier/
+    todo: 곧 삭제 예정인 API
     """
 
     queryset = GithubUser.objects.all()

@@ -1,5 +1,5 @@
 # 배포 버전
-RELEASE_VERSION = '2021.7.20'
+RELEASE_VERSION = '2021.7.31'
 
 
 # Application definition
@@ -10,7 +10,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
     'django_extensions',
 
     'apps.users',
@@ -19,7 +18,8 @@ INSTALLED_APPS = [
     'apps.ranks',
     'apps.notices',
 
-    'corsheaders'
+    'corsheaders',
+    'ckeditor'
 ]
 
 # SECURITY WARNING: keep the secret key used in production secret!

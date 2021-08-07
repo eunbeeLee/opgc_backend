@@ -37,9 +37,10 @@ class CustomBaseModel(models.Model):
         abstract = True
         default_manager_name = 'objects'  # 명시적으로 적용
 
+    # todo: 제거해야 함 (auto_now 옵션이 있어서 필요가 없음)
     def save(self, *args, **kwargs):
         """ On save, update timestamps """
         if not self.id:
-            self.reg_time = datetime.now()
-        self.mod_time = datetime.now()
+            self.created = datetime.now()
+        self.updated = datetime.now()
         return super().save(*args, **kwargs)

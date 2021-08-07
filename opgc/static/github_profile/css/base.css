@@ -1,0 +1,42 @@
+@import url('https://cdn.rawgit.com/innks/NanumSquareRound/master/nanumsquareround.min.css');
+
+body, button, input, select, table, textarea {
+  color: #333;
+  font-family: 'NanumSquareRound', sans-serif, "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", Dotum, '돋움', "Noto Sans KR", "Nanum Gothic", 'Lato', Helvetica, sans-serif;
+}
+
+.profile-base {
+    display: flex;
+    max-width: 300px;
+    font-size: small;
+    border: 1px solid;
+    border-radius: 10px;
+    padding: 15px;
+    -webkit-box-shadow: 0 0 10px -1px grey;
+    -moz-box-shadow: 0 0 10px -1px grey;
+    box-shadow: 0 0 10px -1px grey;
+}
+
+.rank {
+    vertical-align:middle;
+}
+
+.opgc-link {
+    color: #29855b;
+}
+
+.inform {
+    margin-left: 10px;
+    width: 100%;
+}
+
+.profile-base ul {
+    margin: 10px;
+    list-style: none;
+    padding-left: 0;
+    display: inline-block;
+}
+
+.profile-base li {
+    margin-bottom: 3px;
+}

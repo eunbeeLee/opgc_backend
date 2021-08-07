@@ -24,6 +24,22 @@ class GithubUserSerializer(serializers.ModelSerializer):
         return ret
 
 
+class GithubUserListSerializer(serializers.ModelSerializer):
+    tier = serializers.CharField(source='get_tier_display')
+
+    class Meta:
+        model = GithubUser
+        fields = '__all__'  # 모든 필드 포함
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+
+        ret['organizations'] = OrganizationSerializer(instance.organization.all(), many=True).data
+        ret['status'] = instance.get_status_display()
+
+        return ret
+
+
 class OrganizationSerializer(serializers.ModelSerializer):
 
     class Meta:

@@ -1,16 +1,13 @@
-from django.conf.urls import url
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 
 from api.githubs.views import GithubUserViewSet, OrganizationViewSet, RepositoryViewSet, LanguageViewSet, \
     TierRankViewSet
 
 app_name = 'githubs'
 
-# todo: 라우터로 변경, 유저 리스트 파라미터 타입으로 구분하도록 수정
-
-github_user_list = GithubUserViewSet.as_view({
-    'get': 'retrieve',
-    'patch': 'update'
-})
+router = DefaultRouter()
+router.register(r'', GithubUserViewSet, basename='notice')
 
 organization_list = OrganizationViewSet.as_view({
     'get': 'list',
@@ -28,11 +25,10 @@ tier_list = TierRankViewSet.as_view({
     'get': 'list',
 })
 
-
 urlpatterns = [
-    url(r'^users/(?P<username>[-\w]+)/$', github_user_list, name='github_user_list'),
-    url(r'^users/(?P<user_pk>\d+)/organizations/$', organization_list, name='organization_list'),
-    url(r'^users/(?P<user_pk>\d+)/repositories/$', repository_list, name='repository_list'),
-    url(r'^languages/$', language_list, name='language_list'),
-    url(r'^tier/$', tier_list, name='tier_list'),
+    path(r'users/', include(router.urls)),
+    path(r'users/<int:user_pk>/organizations/', organization_list, name='organization_list'),
+    path(r'users/<int:user_pk>/repositories/', repository_list, name='repository_list'),
+    path(r'languages/', language_list, name='language_list'),
+    path(r'tier/', tier_list, name='tier_list'),
 ]

@@ -9,6 +9,9 @@ from django.db.models import Count
 
 from apps.githubs.models import GithubUser, Language, UserLanguage
 from apps.ranks.models import UserRank
+from core.github_service import GithubInformationService
+from scripts.update_user_information_older_7day import update_github_basic_information
+from utils.exceptions import GitHubUserDoesNotExist
 from utils.slack import slack_update_ranking_system
 
 # todo : 이거 수정하기 (원래 필드 : 모델 이런형태로 하려고 했는데 그렇게 안씀)
@@ -87,15 +90,19 @@ class RankService(object):
     @staticmethod
     def update_user_ranking():
         """
-        1일 1커밋 기준으로 전체 유저의 순위를 계산하는 함수
+        total score 로 전체 유저의 순위를 계산하는 함수
         """
-        github_user = GithubUser.objects.all()
-        for user in chunkator(github_user, 1000):
-            # 동점자 제외
-            user.user_rank = GithubUser.objects.filter(
-                total_score__gt=user.total_score
-            ).values('total_score').annotate(Count('id')).count() + 1
-            user.save(update_fields=['user_rank'])
+        github_users = GithubUser.objects.all()
+        for github_user in chunkator(github_users, 1000):
+            try:
+                github_information_service = GithubInformationService(github_user.username)
+                github_user.total_score = github_information_service.get_total_score(github_user)
+                github_user.user_rank = github_information_service.update_user_ranking(github_user.total_score)
+                github_user.tier = github_information_service.get_tier_statistics(github_user.user_rank)
+                github_user.save(update_fields=['total_score', 'user_rank', 'tier'])
+
+            except GitHubUserDoesNotExist:
+                continue
 
 
 def run():
