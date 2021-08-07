@@ -4,7 +4,7 @@ import timeit
 from chunkator import chunkator
 
 from apps.githubs.models import GithubUser
-from utils.github import get_continuous_commit_day
+from utils.github import get_continuous_commit_day, is_exists_github_users
 from utils.slack import slack_update_1day_1commit
 
 
@@ -12,6 +12,9 @@ async def update_continuous_commit_day(github_user: GithubUser):
     """
         1일 1커밋 크롤링으로 업데이트
     """
+    if not is_exists_github_users:
+        return
+
     is_completed, continuous_count = get_continuous_commit_day(github_user.username)
 
     if is_completed:

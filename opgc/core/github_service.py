@@ -1,10 +1,7 @@
 import json
-import time
 from dataclasses import asdict
-from datetime import datetime, timedelta
 
 import requests
-from bs4 import BeautifulSoup
 from django.conf import settings
 from django.db.models import Count
 from furl import furl
