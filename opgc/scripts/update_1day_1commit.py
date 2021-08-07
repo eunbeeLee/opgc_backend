@@ -4,6 +4,7 @@ import timeit
 from chunkator import chunkator
 
 from apps.githubs.models import GithubUser
+from core.github_service import GithubInformationService
 from utils.github import get_continuous_commit_day, is_exists_github_users
 from utils.slack import slack_update_1day_1commit
 
@@ -19,7 +20,8 @@ async def update_continuous_commit_day(github_user: GithubUser):
 
     if is_completed:
         github_user.continuous_commit_day = continuous_count
-        github_user.save(update_fields=['continuous_commit_day'])
+        github_user.total_score = GithubInformationService.get_total_score(github_user)
+        github_user.save(update_fields=['continuous_commit_day', 'total_score'])
 
 
 def update_1day_1commit():
